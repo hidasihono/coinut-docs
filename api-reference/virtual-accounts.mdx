@@ -1,0 +1,614 @@
+---
+title: "Virtual Accounts"
+description: "Create and manage fiat virtual accounts for receiving customer payments."
+---
+
+## Virtual Account Model
+
+Virtual accounts are fiat-denominated receiving accounts assigned to a customer. Funds sent to a virtual account are credited to your partner balance and trigger a deposit webhook.
+
+### Statuses
+
+| Status | Description |
+|--------|-------------|
+| `PENDING`  | Created, awaiting bank verification |
+| `VERIFIED` | Active and ready to receive funds |
+
+### Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Virtual account ID (prefixed `va_`) |
+| `customerName` | string | Name of the associated customer |
+| `currency` | string | Fiat currency code |
+| `accountNumber`| string | Bank account number |
+| `bicSwift` | string | BIC/SWIFT code (EUR/GBP) or BSB (AUD) |
+| `payId` | string | Australian PayID (AUD only) |
+| `iban` | string | IBAN (EUR/GBP only) |
+| `bankName` | string | Name of the holding bank |
+| `bankAddress` | string | Bank branch address |
+| `status` | string | `PENDING` or `VERIFIED` |
+| `createTime` | string | ISO-8601 creation timestamp |
+
+### Currency-Specific Fields
+
+| Currency | Receiving Methods | Key Fields |
+|----------|-------------------|------------|
+| **AUD** | BSB + Account Number, PayID | `accountNumber`, `bicSwift` (BSB), `payId` |
+| **EUR** | IBAN + SWIFT | `accountNumber`, `bicSwift`, `iban` |
+| **GBP** | IBAN + SWIFT | `accountNumber`, `bicSwift`, `iban` |
+
+<Note>
+  Whitelist functionality is **AUD only**. EUR and GBP virtual accounts do not support source-account whitelisting.
+</Note>
+
+---
+
+## POST /virtual-account/create
+
+Create a new fiat virtual account for a customer.
+
+### Request Body
+
+<ParamField body="customerId" type="string" required>
+  UUID of the customer who owns this account. Customer must be `APPROVED`.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  Fiat currency. Enum: `GBP`, `EUR`, `AUD`.
+</ParamField>
+
+<ParamField body="whitelist" type="object" optional>
+  Initial whitelist entry for AUD accounts. See below for shape.
+</ParamField>
+
+#### Whitelist Object (AUD only)
+
+<ParamField body="whitelist.bsbNumber" type="string" required>
+  BSB code in `###-###` format.
+</ParamField>
+
+<ParamField body="whitelist.accountNumber" type="string" required>
+  Bank account number.
+</ParamField>
+
+<ParamField body="whitelist.accountName" type="string" required>
+  Name on the source account.
+</ParamField>
+
+### Response
+
+<ResponseField name="data.id" type="string" required>
+  Virtual account ID (e.g. `va_123`).
+</ResponseField>
+
+<ResponseField name="data.customerName" type="string" required>
+  Associated customer name.
+</ResponseField>
+
+<ResponseField name="data.currency" type="string" required>
+  Account currency.
+</ResponseField>
+
+<ResponseField name="data.accountNumber" type="string" required>
+  Bank account number.
+</ResponseField>
+
+<ResponseField name="data.bicSwift" type="string">
+  BSB for AUD, SWIFT code for EUR/GBP.
+</ResponseField>
+
+<ResponseField name="data.payId" type="string">
+  Australian PayID (AUD only).
+</ResponseField>
+
+<ResponseField name="data.iban" type="string">
+  IBAN (EUR/GBP only).
+</ResponseField>
+
+<ResponseField name="data.bankName" type="string" required>
+  Holding bank name.
+</ResponseField>
+
+<ResponseField name="data.bankAddress" type="string">
+  Bank branch address.
+</ResponseField>
+
+<ResponseField name="data.createTime" type="string" required>
+  ISO-8601 timestamp.
+</ResponseField>
+
+<ResponseField name="data.status" type="string" required>
+  `PENDING` or `VERIFIED`.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://ramp.hexarails.ai/virtual-account/create" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "currency": "AUD",
+    "whitelist": {
+      "bsbNumber": "123-456",
+      "accountNumber": "123456789",
+      "accountName": "John Doe"
+    }
+  }'
+```
+
+```javascript JavaScript
+authedRequest('POST', '/virtual-account/create', {
+  customerId: '550e8400-e29b-41d4-a716-446655440000',
+  currency: 'AUD',
+  whitelist: {
+    bsbNumber: '123-456',
+    accountNumber: '123456789',
+    accountName: 'John Doe'
+  }
+}).then(console.log);
+```
+
+```python Python
+print(authed_request('POST', '/virtual-account/create', {
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "currency": "AUD",
+    "whitelist": {
+        "bsbNumber": "123-456",
+        "accountNumber": "123456789",
+        "accountName": "John Doe"
+    }
+}))
+```
+
+```typescript TypeScript
+authedRequest('POST', '/virtual-account/create', {
+  customerId: '550e8400-e29b-41d4-a716-446655440000',
+  currency: 'AUD',
+  whitelist: {
+    bsbNumber: '123-456',
+    accountNumber: '123456789',
+    accountName: 'John Doe'
+  }
+}).then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "va_123",
+    "customerName": "John Doe",
+    "currency": "AUD",
+    "accountNumber": "12345678",
+    "bicSwift": "123-456",
+    "payId": "john.doe@example.com",
+    "iban": "IBAN123",
+    "bankName": "Example Bank",
+    "bankAddress": "123 Example St",
+    "createTime": "2024-01-01T00:00:00Z",
+    "status": "VERIFIED"
+  }
+}
+```
+
+<Tip>
+  For AUD accounts, generate a PayID QR code from the `payId` value to simplify the payment experience for your customers.
+</Tip>
+
+---
+
+## GET /virtual-account/list
+
+List virtual accounts with pagination and filters.
+
+### Query Parameters
+
+<ParamField query="pageNum" type="integer" default="1">
+  Page number (1-based).
+</ParamField>
+
+<ParamField query="pageSize" type="integer" default="10">
+  Items per page. Maximum: 100.
+</ParamField>
+
+<ParamField query="customerId" type="string">
+  Filter by customer UUID.
+</ParamField>
+
+<ParamField query="currency" type="string">
+  Filter by currency. Enum: `GBP`, `EUR`, `AUD`.
+</ParamField>
+
+<ParamField query="status" type="string">
+  Filter by status. Enum: `PENDING`, `VERIFIED`.
+</ParamField>
+
+### Response
+
+<ResponseField name="data.list" type="object[]" required>
+  Array of virtual account objects.
+</ResponseField>
+
+<ResponseField name="data.pageNum" type="integer" required>
+  Current page.
+</ResponseField>
+
+<ResponseField name="data.pageSize" type="integer" required>
+  Items per page.
+</ResponseField>
+
+<ResponseField name="data.total" type="integer" required>
+  Total matching records.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/virtual-account/list?pageNum=1&pageSize=10&currency=AUD" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/virtual-account/list?pageNum=1&pageSize=10&currency=AUD').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/virtual-account/list', {
+    "pageNum": 1,
+    "pageSize": 10,
+    "currency": "AUD"
+}))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/virtual-account/list?pageNum=1&pageSize=10&currency=AUD').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "list": [
+      {
+        "id": "va_123",
+        "customerName": "John Doe",
+        "currency": "AUD",
+        "accountNumber": "12345678",
+        "bicSwift": "123-456",
+        "payId": "john.doe@example.com",
+        "iban": "IBAN123",
+        "bankName": "Example Bank",
+        "bankAddress": "123 Example St",
+        "createTime": "2024-01-01T00:00:00Z",
+        "status": "VERIFIED"
+      }
+    ],
+    "pageNum": 1,
+    "pageSize": 10,
+    "total": 1
+  }
+}
+```
+
+---
+
+## GET /virtual-account/detail
+
+Get detailed information for a single virtual account.
+
+### Query Parameters
+
+<ParamField query="id" type="string" required>
+  Virtual account ID (e.g. `va_123`).
+</ParamField>
+
+### Response
+
+Returns a full `VirtualAccountDetailDto` object including all fields from the list response plus any additional metadata.
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/virtual-account/detail?id=va_123" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/virtual-account/detail?id=va_123').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/virtual-account/detail', {"id": "va_123"}))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/virtual-account/detail?id=va_123').then(console.log);
+```
+</CodeGroup>
+
+---
+
+## POST /virtual-account/create-aud-whitelist
+
+Add a new source account to the AUD whitelist. Only funds from whitelisted accounts are accepted.
+
+### Request Body
+
+<ParamField body="id" type="string" required>
+  Virtual account ID (e.g. `va_123`).
+</ParamField>
+
+<ParamField body="sourceAccount" type="object" required>
+  The source account to whitelist.
+</ParamField>
+
+<ParamField body="sourceAccount.bsbNumber" type="string" required>
+  BSB code in `###-###` format.
+</ParamField>
+
+<ParamField body="sourceAccount.accountNumber" type="string" required>
+  Source bank account number.
+</ParamField>
+
+<ParamField body="sourceAccount.accountName" type="string" required>
+  Name on the source account.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://ramp.hexarails.ai/virtual-account/create-aud-whitelist" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "id": "va_123",
+    "sourceAccount": {
+      "bsbNumber": "123-456",
+      "accountNumber": "123456789",
+      "accountName": "John Doe"
+    }
+  }'
+```
+
+```javascript JavaScript
+authedRequest('POST', '/virtual-account/create-aud-whitelist', {
+  id: 'va_123',
+  sourceAccount: {
+    bsbNumber: '123-456',
+    accountNumber: '123456789',
+    accountName: 'John Doe'
+  }
+}).then(console.log);
+```
+
+```python Python
+print(authed_request('POST', '/virtual-account/create-aud-whitelist', {
+    "id": "va_123",
+    "sourceAccount": {
+        "bsbNumber": "123-456",
+        "accountNumber": "123456789",
+        "accountName": "John Doe"
+    }
+}))
+```
+
+```typescript TypeScript
+authedRequest('POST', '/virtual-account/create-aud-whitelist', {
+  id: 'va_123',
+  sourceAccount: {
+    bsbNumber: '123-456',
+    accountNumber: '123456789',
+    accountName: 'John Doe'
+  }
+}).then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "message": "Whitelist entry created successfully"
+  }
+}
+```
+
+<Note>
+  Whitelist entries are active immediately after creation.
+</Note>
+
+---
+
+## POST /virtual-account/update-aud-whitelist
+
+Update an existing whitelist entry.
+
+### Request Body
+
+<ParamField body="id" type="string" required>
+  Virtual account ID.
+</ParamField>
+
+<ParamField body="sourceAccount" type="object" required>
+  Updated source account data.
+</ParamField>
+
+<ParamField body="sourceAccount.id" type="integer" required>
+  ID of the existing whitelist entry to update.
+</ParamField>
+
+<ParamField body="sourceAccount.bsbNumber" type="string" required>
+  Updated BSB code.
+</ParamField>
+
+<ParamField body="sourceAccount.accountNumber" type="string" required>
+  Updated account number.
+</ParamField>
+
+<ParamField body="sourceAccount.accountName" type="string" required>
+  Updated account name.
+</ParamField>
+
+<ParamField body="sourceAccount.accountStatus" type="string" required>
+  Status of the entry. Enum: `ACTIVE`, `INACTIVE`.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://ramp.hexarails.ai/virtual-account/update-aud-whitelist" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "id": "va_123",
+    "sourceAccount": {
+      "id": 123,
+      "bsbNumber": "123-456",
+      "accountNumber": "123456789",
+      "accountName": "John Doe",
+      "accountStatus": "ACTIVE"
+    }
+  }'
+```
+
+```javascript JavaScript
+authedRequest('POST', '/virtual-account/update-aud-whitelist', {
+  id: 'va_123',
+  sourceAccount: {
+    id: 123,
+    bsbNumber: '123-456',
+    accountNumber: '123456789',
+    accountName: 'John Doe',
+    accountStatus: 'ACTIVE'
+  }
+}).then(console.log);
+```
+
+```python Python
+print(authed_request('POST', '/virtual-account/update-aud-whitelist', {
+    "id": "va_123",
+    "sourceAccount": {
+        "id": 123,
+        "bsbNumber": "123-456",
+        "accountNumber": "123456789",
+        "accountName": "John Doe",
+        "accountStatus": "ACTIVE"
+    }
+}))
+```
+
+```typescript TypeScript
+authedRequest('POST', '/virtual-account/update-aud-whitelist', {
+  id: 'va_123',
+  sourceAccount: {
+    id: 123,
+    bsbNumber: '123-456',
+    accountNumber: '123456789',
+    accountName: 'John Doe',
+    accountStatus: 'ACTIVE'
+  }
+}).then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "message": "Whitelist entry updated successfully"
+  }
+}
+```
+
+---
+
+## GET /virtual-account/get-aud-whitelist
+
+Retrieve all whitelisted source accounts for a virtual account.
+
+### Query Parameters
+
+<ParamField query="id" type="string" required>
+  Virtual account ID.
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="object[]" required>
+  Array of source account entries.
+</ResponseField>
+
+<ResponseField name="data[].id" type="integer" required>
+  Whitelist entry ID.
+</ResponseField>
+
+<ResponseField name="data[].bsbNumber" type="string" required>
+  BSB code.
+</ResponseField>
+
+<ResponseField name="data[].accountNumber" type="string" required>
+  Account number.
+</ResponseField>
+
+<ResponseField name="data[].accountName" type="string" required>
+  Account holder name.
+</ResponseField>
+
+<ResponseField name="data[].accountStatus" type="string" required>
+  `ACTIVE` or `INACTIVE`.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/virtual-account/get-aud-whitelist?id=va_123" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/virtual-account/get-aud-whitelist?id=va_123').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/virtual-account/get-aud-whitelist', {"id": "va_123"}))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/virtual-account/get-aud-whitelist?id=va_123').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "id": 123,
+      "bsbNumber": "123-456",
+      "accountNumber": "123456789",
+      "accountName": "John Doe",
+      "accountStatus": "ACTIVE"
+    }
+  ]
+}
+```

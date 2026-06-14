@@ -1,0 +1,407 @@
+---
+title: "Deposits"
+description: "Monitor customer deposits across fiat and crypto rails."
+---
+
+## Status Lifecycle
+
+<Steps>
+  <Step title="RECEIVED">Deposit has been detected on-chain or via bank notification.</Step>
+  <Step title="Review Queue">Deposit enters one of four review paths:
+    - `NAME_REVIEWING` — sender name verification in progress
+    - `THRESHOLD_PENDING` — large deposit, awaiting threshold approval
+    - `COMPLIANCE_REVIEWING` — compliance case review
+    - `ACTION_REQUIRED` — manual action needed from partner
+  </Step>
+  <Step title="Resolution">
+    - `CONFIRMED` — deposit cleared and available for conversion
+    - `REFUNDING` → `REFUNDED` — funds being returned to sender
+  </Step>
+</Steps>
+
+```
+RECEIVED → NAME_REVIEWING ───────────────→ CONFIRMED
+         → THRESHOLD_PENDING ─────────────→ CONFIRMED
+         → COMPLIANCE_REVIEWING ──→ CONFIRMED
+                                └─→ REFUNDING → REFUNDED
+         → ACTION_REQUIRED
+```
+
+| Status | Description |
+|--------|-------------|
+| `RECEIVED` | Deposit detected, awaiting processing |
+| `NAME_REVIEWING` | Sender name verification in progress |
+| `THRESHOLD_PENDING` | Large deposit pending threshold approval |
+| `COMPLIANCE_REVIEWING` | Under compliance review |
+| `CONFIRMED` | Deposit confirmed and available for trade |
+| `ACTION_REQUIRED` | Manual partner action needed |
+| `REFUNDING` | Refund in progress |
+| `REFUNDED` | Funds returned to sender |
+
+---
+
+## List Deposits
+
+Retrieve a paginated list of deposits for your partner account. Filter by customer, currency, or status.
+
+<ParamField query="pageNum" type="number" default="1">Page number</ParamField>
+<ParamField query="pageSize" type="number" default="10">Items per page</ParamField>
+<ParamField query="customerId" type="string" optional>Filter by customer ID</ParamField>
+<ParamField query="currency" type="string" optional>Filter by currency code (e.g. USDT, USD)</ParamField>
+<ParamField query="status" type="string" optional>
+  Filter by status. One of: `RECEIVED`, `NAME_REVIEWING`, `THRESHOLD_PENDING`, `COMPLIANCE_REVIEWING`, `CONFIRMED`, `ACTION_REQUIRED`, `REFUNDING`, `REFUNDED`
+</ParamField>
+
+### Request
+
+<CodeGroup>
+
+```bash
+curl -X GET "https://ramp.hexarails.ai/deposit/list?pageNum=1&pageSize=10&status=CONFIRMED" \
+  -H "X-API-Key: your_api_key" \
+  -H "X-Timestamp: 1710825600" \
+  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-Signature: your_signature"
+```
+
+```javascript
+const params = new URLSearchParams({ pageNum: "1", pageSize: "10", status: "CONFIRMED" });
+
+const response = await fetch(`https://ramp.hexarails.ai/deposit/list?${params}`, {
+  method: "GET",
+  headers: {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+  },
+});
+
+const data = await response.json();
+```
+
+```python
+import requests
+
+headers = {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+}
+
+params = {
+    "pageNum": 1,
+    "pageSize": 10,
+    "status": "CONFIRMED",
+}
+
+response = requests.get(
+    "https://ramp.hexarails.ai/deposit/list",
+    headers=headers,
+    params=params,
+)
+data = response.json()
+```
+
+```typescript
+const params = new URLSearchParams({ pageNum: "1", pageSize: "10", status: "CONFIRMED" });
+
+const response = await fetch(`https://ramp.hexarails.ai/deposit/list?${params}`, {
+  method: "GET",
+  headers: {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+  },
+});
+
+const data = await response.json();
+```
+
+</CodeGroup>
+
+### Response
+
+<ResponseField name="status" type="string">`SUCCESS` or `ERROR`</ResponseField>
+<ResponseField name="data.list" type="array">Array of deposit objects</ResponseField>
+<ResponseField name="data.total" type="number">Total matching records</ResponseField>
+<ResponseField name="data.pageNum" type="number">Current page</ResponseField>
+<ResponseField name="data.pageSize" type="number">Page size</ResponseField>
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "list": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "customerId": "cust_12345",
+        "currency": "USDT",
+        "amount": "100.50",
+        "status": "CONFIRMED",
+        "txid": "0xabc123def456...",
+        "voutIndexTxKey": "1",
+        "txFrom": "0xsenderaddress",
+        "txReference": "ref-001",
+        "timestamp": "2024-01-01T00:00:00Z"
+      }
+    ],
+    "total": 50,
+    "pageNum": 1,
+    "pageSize": 10
+  }
+}
+```
+
+---
+
+## Get Deposit Detail
+
+Retrieve full details for a single deposit, including sender and receiver information.
+
+<ParamField query="id" type="string" required>Deposit UUID</ParamField>
+<ParamField query="status" type="string" optional>Filter by status</ParamField>
+
+### Request
+
+<CodeGroup>
+
+```bash
+curl -X GET "https://ramp.hexarails.ai/deposit/detail?id=550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-API-Key: your_api_key" \
+  -H "X-Timestamp: 1710825600" \
+  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-Signature: your_signature"
+```
+
+```javascript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440000",
+});
+
+const response = await fetch(`https://ramp.hexarails.ai/deposit/detail?${params}`, {
+  method: "GET",
+  headers: {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+  },
+});
+
+const data = await response.json();
+```
+
+```python
+import requests
+
+headers = {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+}
+
+params = {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+}
+
+response = requests.get(
+    "https://ramp.hexarails.ai/deposit/detail",
+    headers=headers,
+    params=params,
+)
+data = response.json()
+```
+
+```typescript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440000",
+});
+
+const response = await fetch(`https://ramp.hexarails.ai/deposit/detail?${params}`, {
+  method: "GET",
+  headers: {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+  },
+});
+
+const data = await response.json();
+```
+
+</CodeGroup>
+
+### Response
+
+<Note>
+  The `type` field determines which nested objects are populated. For `CRYPTO` deposits, `senderCryptoAddress` and `receiverDepositAddress` are filled. For `FIAT` deposits, `senderBankAccount` and `receiverVirtualAccount` are filled.
+</Note>
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "customerId": "cust_12345",
+    "type": "CRYPTO",
+    "currency": "USDT",
+    "amount": "100.50",
+    "senderBankAccount": {
+      "bankName": "DBS Bank",
+      "accountNo": "1234567890",
+      "beneficiaryName": "John Doe"
+    },
+    "senderCryptoAddress": {
+      "address": "0xsenderaddress",
+      "chain": "ETH"
+    },
+    "receiverDepositAddress": {
+      "address": "0xreceiveraddress",
+      "chain": "ETH",
+      "memo": "memo123"
+    },
+    "receiverVirtualAccount": {
+      "accountNo": "VA-123456",
+      "bankName": "Virtual Bank"
+    },
+    "txid": "0xabc123def456...",
+    "voutIndexTxKey": "1",
+    "txFrom": "0xsenderaddress",
+    "txReference": "ref-001",
+    "status": "CONFIRMED",
+    "timestamp": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+---
+
+## Deposit Detail Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Deposit UUID |
+| `customerId` | `string` | Customer identifier |
+| `type` | `string` | `CRYPTO` or `FIAT` |
+| `currency` | `string` | Deposit currency code |
+| `amount` | `string` | Deposit amount (decimal string) |
+| `senderBankAccount` | `object` | Sender bank details (FIAT deposits) |
+| `senderBankAccount.bankName` | `string` | Sender bank name |
+| `senderBankAccount.accountNo` | `string` | Sender account number |
+| `senderBankAccount.beneficiaryName` | `string` | Sender account holder name |
+| `senderCryptoAddress` | `object` | Sender crypto details (CRYPTO deposits) |
+| `senderCryptoAddress.address` | `string` | Sender wallet address |
+| `senderCryptoAddress.chain` | `string` | Blockchain network |
+| `receiverDepositAddress` | `object` | Receiver crypto address (CRYPTO deposits) |
+| `receiverDepositAddress.address` | `string` | Deposit address |
+| `receiverDepositAddress.chain` | `string` | Blockchain network |
+| `receiverDepositAddress.memo` | `string` | Optional memo/tag |
+| `receiverVirtualAccount` | `object` | Receiver virtual account (FIAT deposits) |
+| `receiverVirtualAccount.accountNo` | `string` | Virtual account number |
+| `receiverVirtualAccount.bankName` | `string` | Virtual account bank name |
+| `txid` | `string` | Transaction ID on-chain or wire reference |
+| `voutIndexTxKey` | `string` | Output index (CRYPTO only) |
+| `txFrom` | `string` | Sender address or account |
+| `txReference` | `string` | Transaction reference |
+| `status` | `string` | Current deposit status |
+| `timestamp` | `string` | ISO 8601 timestamp |
+
+---
+
+## Submit Deposit Attachment
+
+Upload a supporting document for a deposit. Use this for compliance or dispute cases.
+
+<ParamField body="depositId" type="string" required>Deposit UUID</ParamField>
+<ParamField body="file" type="file" required>Attachment file (PDF, image, or document)</ParamField>
+
+### Request
+
+<CodeGroup>
+
+```bash
+curl -X POST "https://ramp.hexarails.ai/deposit/submitAttachmentFile" \
+  -H "X-API-Key: your_api_key" \
+  -H "X-Timestamp: 1710825600" \
+  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-Signature: your_signature" \
+  -F "depositId=550e8400-e29b-41d4-a716-446655440000" \
+  -F "file=@/path/to/document.pdf"
+```
+
+```javascript
+const formData = new FormData();
+formData.append("depositId", "550e8400-e29b-41d4-a716-446655440000");
+formData.append("file", fs.createReadStream("/path/to/document.pdf"));
+
+const response = await fetch("https://ramp.hexarails.ai/deposit/submitAttachmentFile", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+  },
+  body: formData,
+});
+
+const data = await response.json();
+```
+
+```python
+import requests
+
+headers = {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+}
+
+files = {
+    "depositId": (None, "550e8400-e29b-41d4-a716-446655440000"),
+    "file": open("/path/to/document.pdf", "rb"),
+}
+
+response = requests.post(
+    "https://ramp.hexarails.ai/deposit/submitAttachmentFile",
+    headers=headers,
+    files=files,
+)
+data = response.json()
+```
+
+```typescript
+const formData = new FormData();
+formData.append("depositId", "550e8400-e29b-41d4-a716-446655440000");
+formData.append("file", fs.createReadStream("/path/to/document.pdf"));
+
+const response = await fetch("https://ramp.hexarails.ai/deposit/submitAttachmentFile", {
+  method: "POST",
+  headers: {
+    "X-API-Key": "your_api_key",
+    "X-Timestamp": "1710825600",
+    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
+    "X-Signature": "your_signature",
+  },
+  body: formData,
+});
+
+const data = await response.json();
+```
+
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": "Attachment uploaded successfully"
+}
+```

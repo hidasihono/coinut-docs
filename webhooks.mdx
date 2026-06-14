@@ -1,0 +1,196 @@
+---
+title: "Webhooks"
+description: "Receive real-time event notifications from Coinut."
+---
+
+## Overview
+
+Coinut sends webhook events to your registered callback URL when important events occur.
+
+All webhooks:
+
+- Use the `POST` method
+- Send a JSON body
+- Expect an HTTP `200` response within 30 seconds
+- Use the `WebhookEvent` envelope documented in `rampdocs.json`
+
+## Setting Up Webhooks
+
+<Steps>
+  <Step title="Register callback URL">
+    Send `POST /callback-url` with your HTTPS endpoint.
+
+    ```json
+    {
+      "callbackUrl": "https://your-domain.com/webhooks/coinut"
+    }
+    ```
+  </Step>
+  <Step title="Subscribe to events">
+    Send `POST /subscribed-events` with the event types you want to receive.
+
+    ```json
+    {
+      "events": [
+        "CUSTOMER_APPROVED",
+        "DEPOSIT_RECEIVED",
+        "TRADE_SETTLED"
+      ]
+    }
+    ```
+  </Step>
+  <Step title="Verify signature">
+    `rampdocs.json` does not define a webhook signature header or verification algorithm.
+    If Coinut enables signed webhooks for your environment, follow the latest operational guidance
+    provided with your partner account.
+  </Step>
+  <Step title="Acknowledge receipt">
+    Return HTTP `200` within 30 seconds. The exact retry policy is not defined in `rampdocs.json`,
+    so your handler should be idempotent and safe to receive duplicate deliveries.
+  </Step>
+</Steps>
+
+## Webhook Delivery
+
+| Property | Value |
+|----------|-------|
+| Method | `POST` |
+| Protocol | HTTPS only |
+| Timeout | 30 seconds |
+| Retries | Not specified in `rampdocs.json` |
+| Backoff | Not specified in `rampdocs.json` |
+| Deduplication | `event` + `payload` combination |
+
+## Event Types
+
+| Event | Description | Payload Type |
+|-------|-------------|--------------|
+| `CUSTOMER_APPROVED` | Customer KYC approved | `GetCustomerDataDto` |
+| `CUSTOMER_REJECTED` | Customer KYC rejected | `GetCustomerDataDto` |
+| `CUSTOMER_DELETED` | Customer deleted | `GetCustomerDataDto` |
+| `VIRTUAL_ACCOUNT_APPROVED` | VA created and verified | `VirtualAccountDetailDto` |
+| `VIRTUAL_ACCOUNT_REJECTED` | VA creation rejected | `VirtualAccountDetailDto` |
+| `DEPOSIT_ADDRESS_APPROVED` | Deposit address verified | `DepositAddressDetailDto` |
+| `DEPOSIT_ADDRESS_REJECTED` | Deposit address rejected | `DepositAddressDetailDto` |
+| `DEPOSIT_RECEIVED` | Deposit detected | `PartnerDepositDetailDataDto` |
+| `DEPOSIT_APPROVED` | Deposit confirmed | `PartnerDepositDetailDataDto` |
+| `DEPOSIT_REJECTED` | Deposit rejected/refunded | `PartnerDepositDetailDataDto` |
+| `TRADE_CREATED` | Trade initiated | `TradeDetailDataDto` |
+| `TRADE_SETTLED` | Trade completed | `TradeDetailDataDto` |
+| `PAYMENT_SETTLED` | Payment completed | `GetPaymentDetailDataDto` |
+
+<Warning>
+  Legacy event names (`user.approved`, `user.rejected`, `va.approved`, `va.rejected`,
+  `deposit.received`, `deposit.approved`, `deposit.rejected`, `trade.created`, `trade.settled`)
+  are deprecated and will be removed. Migrate to the new UPPER_SNAKE_CASE names.
+</Warning>
+
+## Webhook Payload Examples
+
+<CodeGroup>
+```json CUSTOMER_APPROVED
+{
+  "event": "CUSTOMER_APPROVED",
+  "payload": {
+    "id": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "realName": "Alice Smith",
+    "email": "user@example.com",
+    "externalId": "partner-customer-001",
+    "sumsubLink": "https://in.sumsub.com/websdk/p/sbx_4pe01gDQ0uXG5lVw",
+    "status": "CONFIRMED"
+  }
+}
+```
+
+```json DEPOSIT_RECEIVED
+{
+  "event": "DEPOSIT_RECEIVED",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "type": "FIAT",
+    "currency": "AUD",
+    "amount": "1500.00",
+    "receiverVirtualAccount": {
+      "id": "va_123",
+      "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+      "customerName": "Alice Smith",
+      "currency": "AUD",
+      "accountNumber": "12345678",
+      "bicSwift": "123-456",
+      "payId": "alice@example.com",
+      "status": "VERIFIED",
+      "bankName": "Example Bank"
+    },
+    "txid": "tx_external_001",
+    "voutIndexTxKey": "tx_external_001:0",
+    "status": "RECEIVED",
+    "timestamp": "2026-03-12T17:22:04Z"
+  }
+}
+```
+
+```json TRADE_SETTLED
+{
+  "event": "TRADE_SETTLED",
+  "payload": {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "fromAmount": "1500.00",
+    "fromCurrency": "AUD",
+    "toAmount": "1498.50",
+    "toCurrency": "USDT",
+    "status": "SETTLED",
+    "createTime": "2026-03-12T17:23:15Z",
+    "deposit": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "currency": "AUD",
+      "amount": "1500.00"
+    }
+  }
+}
+```
+
+```json PAYMENT_SETTLED
+{
+  "event": "PAYMENT_SETTLED",
+  "payload": {
+    "id": "12209d2d-47b4-4a07-8a01-b49052cd8204",
+    "status": "CONFIRMED",
+    "rate": "0.9950",
+    "deductAmount": "180.50",
+    "deductCurrency": "USDT",
+    "receivedCurrency": "USD",
+    "receivedAmount": "100.00",
+    "bankCharge": "80.00",
+    "reference": "payment-123456",
+    "createTime": "2026-03-12 17:22:04",
+    "bankAccount": {
+      "bankName": "DBS Bank",
+      "accountNo": "1234567890",
+      "currency": "USD",
+      "beneficiaryName": "Alice Smith"
+    }
+  }
+}
+```
+</CodeGroup>
+
+## Signature Verification
+
+`rampdocs.json` does not define a webhook signature header or signature-construction method.
+If your partner setup includes signed webhook delivery, use Coinut's current operational guidance for
+header names, canonicalization rules, and retry handling.
+
+## Best Practices
+
+- **Verify signatures when enabled.** If Coinut provides a webhook signature mechanism for your environment,
+  validate it before processing the payload.
+- **Handle idempotently.** Use the `event` + `payload.id` combination to prevent duplicate processing.
+- **Return 200 quickly.** Respond immediately, then process the event asynchronously.
+- **Log everything.** Store raw payloads and headers for debugging.
+- **Expect retries.** The same event may arrive multiple times if your handler is slow.
+
+<Tip>
+  Test webhooks locally with [ngrok](https://ngrok.com). Run `ngrok http 3000`, then register the
+  HTTPS tunnel URL as your callback endpoint. Coinut will deliver events to your local machine.
+</Tip>

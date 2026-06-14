@@ -1,0 +1,71 @@
+---
+title: "Errors"
+description: "Handle Coinut API error responses, retries, and idempotency safely."
+---
+
+Coinut APIs return JSON envelopes for both success and errors.
+
+## Success envelope
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {}
+}
+```
+
+## Error envelope
+
+```json
+{
+  "status": "INVALID_PARAMETERS",
+  "message": "invalid parameters"
+}
+```
+
+## HTTP status model
+
+| HTTP status | Meaning |
+| --- | --- |
+| `200` | Request succeeded |
+| `401` | Authentication failed |
+| `422` | Request was authenticated but invalid or could not be processed |
+| `429` | Rate limit exceeded |
+| `500` | Temporary server error |
+
+## Common error statuses
+
+| Status | Meaning | Recommended action |
+| --- | --- | --- |
+| `INVALID_PARAMETERS` | Missing or invalid parameter | Compare request against the API Reference schema |
+| `UNAUTHORISED` | Signature, key, timestamp, or nonce is invalid | Rebuild the canonical string and verify server clock |
+| `FAILED` | Internal or downstream processing failure | Retry only when the operation is safe to retry |
+
+## Retry guidance
+
+Retry transient `429` and `500` responses with exponential backoff. Do not automatically retry money-moving `POST` requests unless your integration has an idempotency strategy and has checked the current object state.
+
+```typescript
+async function retryTransient<T>(fn: () => Promise<Response>, maxRetries = 4): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fn();
+    if (![429, 500].includes(response.status)) return response;
+
+    const delayMs = 1000 * Math.pow(2, attempt);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  throw new Error("Coinut API retry limit exceeded");
+}
+```
+
+## Idempotency
+
+- Generate a fresh nonce for each new API request.
+- For network failures, query detail/list endpoints before retrying create actions.
+- Store your own stable references such as `externalId` and payment `reference`.
+- Make webhook processing idempotent because retries are expected.
+
+<Warning>
+  A timeout does not prove that a payment, deposit action, or flow creation failed. Check the related detail endpoint before creating a replacement.
+</Warning>

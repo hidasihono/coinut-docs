@@ -1,0 +1,461 @@
+---
+title: "QR Code Payments"
+description: "Generate QR codes for PayID payments and crypto addresses."
+---
+
+QR codes simplify payments by letting customers scan with their banking or wallet app instead of manually typing account details. This guide covers generating QR codes for both PayID (AUD) and crypto addresses.
+
+## Overview
+
+QR codes bridge the gap between your app and the customer's banking/wallet app. A single scan populates all payment fields, eliminating transcription errors.
+
+## PayID QR Codes (AUD)
+
+PayID QR codes follow the standard format:
+
+```
+payid:{payIdAddress}
+```
+
+**Example**: `payid:john.doe@example.com`
+
+When scanned with an Australian banking app, the PayID field is auto-populated and the customer only needs to enter the amount and confirm.
+
+### Supported Banks
+
+All major Australian banks support PayID/Osko QR scanning:
+
+| Bank | PayID Support | QR Scanning |
+|------|--------------|-------------|
+| Commonwealth Bank | Yes | Yes |
+| ANZ | Yes | Yes |
+| NAB | Yes | Yes |
+| Westpac | Yes | Yes |
+| ING | Yes | Yes |
+| Macquarie Bank | Yes | Yes |
+| Bendigo Bank | Yes | Yes |
+| Suncorp Bank | Yes | Yes |
+
+## Implementation
+
+### Node.js
+
+<CodeGroup>
+```javascript Generate as Data URL
+// npm install qrcode
+const QRCode = require('qrcode');
+
+async function generatePayIdQR(payId) {
+  const dataUrl = await QRCode.toDataURL(`payid:${payId}`, {
+    type: 'image/png',
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+    color: {
+      dark: '#000000',
+      light: '#FFFFFF',
+    },
+  });
+  return dataUrl; // data:image/png;base64,iVBORw0KGgo...
+}
+
+// Usage in HTML
+const qrDataUrl = await generatePayIdQR('john.doe@example.com');
+// <img src="{qrDataUrl}" alt="Scan to pay" />
+```
+
+```javascript Save to File
+const QRCode = require('qrcode');
+
+async function savePayIdQR(payId, outputPath) {
+  await QRCode.toFile(outputPath, `payid:${payId}`, {
+    type: 'png',
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+}
+
+// Usage
+await savePayIdQR('john.doe@example.com', './payid-qr.png');
+```
+
+```javascript Express.js Endpoint
+const express = require('express');
+const QRCode = require('qrcode');
+const app = express();
+
+// GET /qr/payid/:payId — returns PNG QR code
+app.get('/qr/payid/:payId', async (req, res) => {
+  try {
+    const payId = req.params.payId;
+    const qrBuffer = await QRCode.toBuffer(`payid:${payId}`, {
+      type: 'png',
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    });
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(qrBuffer);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to generate QR code' });
+  }
+});
+
+app.listen(3000);
+```
+
+```javascript SVG Generation
+const QRCode = require('qrcode');
+
+async function generatePayIdQRSVG(payId) {
+  const svg = await QRCode.toString(`payid:${payId}`, {
+    type: 'svg',
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+  return svg; // Inline SVG string
+}
+
+// Usage in HTML
+const svg = await generatePayIdQRSVG('john.doe@example.com');
+// <div dangerouslySetInnerHTML={{ __html: svg }} />
+```
+</CodeGroup>
+
+### Python
+
+<CodeGroup>
+```python Generate as Base64 Data URL
+# pip install qrcode[pil]
+import qrcode
+import base64
+from io import BytesIO
+
+
+def generate_payid_qr_base64(pay_id: str, size: int = 300) -> str:
+    """Generate PayID QR code as base64 data URL."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # Resize to target size
+    img = img.resize((size, size))
+
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    b64 = base64.b64encode(buffer.read()).decode()
+    return f"data:image/png;base64,{b64}"
+
+
+# Usage
+data_url = generate_payid_qr_base64("john.doe@example.com")
+# <img src="{data_url}" alt="PayID QR" />
+```
+
+```python Save to File
+import qrcode
+
+
+def save_payid_qr(pay_id: str, filepath: str, size: int = 300):
+    """Save PayID QR code to file."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    img = img.resize((size, size))
+    img.save(filepath)
+
+
+# Usage
+save_payid_qr("john.doe@example.com", "./payid_qr.png", size=400)
+```
+
+```python Pillow Options
+import qrcode
+from PIL import Image
+
+
+def generate_styled_payid_qr(pay_id: str, filepath: str):
+    """Generate QR with custom styling using Pillow."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    # Generate with custom colors
+    img = qr.make_image(
+        fill_color="#1a1a1a",
+        back_color="#f5f5f5",
+    ).convert("RGB")
+
+    # Resize for crisp rendering
+    img = img.resize((400, 400), Image.Resampling.NEAREST)
+
+    img.save(filepath, quality=95)
+
+
+# Add logo overlay (requires High error correction)
+def generate_payid_qr_with_logo(
+    pay_id: str, logo_path: str, output_path: str
+):
+    qr = qrcode.QRCode(
+        version=3,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    # Add logo in center
+    logo = Image.open(logo_path)
+    logo_size = img.size[0] // 4
+    logo = logo.resize((logo_size, logo_size))
+
+    pos = ((img.size[0] - logo_size) // 2, (img.size[1] - logo_size) // 2)
+    img.paste(logo, pos, logo if logo.mode == "RGBA" else None)
+
+    img.save(output_path)
+```
+</CodeGroup>
+
+### TypeScript / React
+
+<CodeGroup>
+```tsx React Component
+// npm install qrcode.react
+import { QRCodeSVG } from 'qrcode.react';
+import React from 'react';
+
+interface PayIdQRProps {
+  payId: string;
+  size?: number;
+}
+
+export const PayIdQRCode: React.FC<PayIdQRProps> = ({ payId, size = 256 }) => {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <QRCodeSVG
+        value={`payid:${payId}`}
+        size={size}
+        level="H" // High error correction
+        includeMargin={true}
+        bgColor="#FFFFFF"
+        fgColor="#000000"
+      />
+      <p style={{ marginTop: 8, fontFamily: 'monospace' }}>{payId}</p>
+    </div>
+  );
+};
+```
+
+```tsx With Logo Overlay
+import { QRCodeSVG } from 'qrcode.react';
+import React from 'react';
+
+interface PayIdQRWithLogoProps {
+  payId: string;
+  logoUrl: string;
+  size?: number;
+}
+
+export const PayIdQRWithLogo: React.FC<PayIdQRWithLogoProps> = ({
+  payId,
+  logoUrl,
+  size = 256,
+}) => {
+  const logoSize = size * 0.2;
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <QRCodeSVG
+        value={`payid:${payId}`}
+        size={size}
+        level="H"
+        includeMargin={true}
+      />
+      <img
+        src={logoUrl}
+        alt=""
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: logoSize,
+          height: logoSize,
+          background: 'white',
+          borderRadius: 8,
+          padding: 4,
+        }}
+      />
+    </div>
+  );
+};
+```
+
+```typescript Node.js Backend
+import QRCode from 'qrcode';
+
+export class QRCodeService {
+  async generatePayIdQRDataUrl(payId: string): Promise<string> {
+    return QRCode.toDataURL(`payid:${payId}`, {
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    });
+  }
+
+  async generatePayIdQRBuffer(payId: string): Promise<Buffer> {
+    return QRCode.toBuffer(`payid:${payId}`, {
+      type: 'png',
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    });
+  }
+
+  async generatePayIdQRSVG(payId: string): Promise<string> {
+    return QRCode.toString(`payid:${payId}`, {
+      type: 'svg',
+      width: 300,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    });
+  }
+}
+```
+</CodeGroup>
+
+## Best Practices
+
+| Aspect | Recommendation |
+|--------|---------------|
+| Format | Always use `payid:` prefix for AUD payments |
+| Error Correction | High (`H`) level — allows logo overlays and better scan reliability |
+| Minimum Size | 200×200px for digital display, 2×2cm for print |
+| Colors | High contrast (dark on light). Avoid light colors |
+| Border | Minimum 2-4 modules quiet zone around the QR code |
+| Resolution | Minimum 72 DPI for screen, 300 DPI for print |
+| Testing | Always test with actual banking apps before launch |
+
+## Crypto Address QR Codes
+
+For crypto deposits, use the standard URI format:
+
+```
+{currency}:{address}?network={network}
+```
+
+**Example for ERC-20 USDT**:
+```
+ethereum:0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E?network=ETH
+```
+
+**Example for TRC-20 USDT**:
+```
+tron:TXYZ1234567890...?network=TRX
+```
+
+### Simple Crypto QR Generator
+
+```javascript
+const QRCode = require('qrcode');
+
+async function generateCryptoQR(address, network, currency = 'ethereum') {
+  const uri = `${currency}:${address}?network=${network}`;
+  return QRCode.toDataURL(uri, {
+    width: 256,
+    margin: 2,
+    errorCorrectionLevel: 'M',
+  });
+}
+
+// Usage
+const qr = await generateCryptoQR(
+  '0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E',
+  'ETH',
+  'ethereum'
+);
+```
+
+## Integration Flow
+
+<Steps>
+  <Step title="Create VA">
+    Call `POST /virtual-account/create` with `customerId` and `currency`.
+  </Step>
+
+  <Step title="Extract PayID">
+    From the response, get `response.data.payId`.
+  </Step>
+
+  <Step title="Generate QR">
+    Use one of the code examples above to generate a QR code from `payid:{payId}`.
+  </Step>
+
+  <Step title="Display in UI">
+    Embed the QR code in your payment page alongside the text PayID and BSB + Account Number.
+  </Step>
+
+  <Step title="Customer Scans">
+    Customer opens their banking app, scans the QR code, enters the amount, and confirms.
+  </Step>
+
+  <Step title="Payment Arrives">
+    Your webhook endpoint receives a `DEPOSIT_RECEIVED` event. Processing begins automatically.
+  </Step>
+</Steps>
+
+## Testing
+
+Verify your QR codes before deploying:
+
+1. **Online scanner**: Use an online QR decoder to verify the content matches `payid:{address}`
+2. **Banking app test**: Scan with a real Australian banking app (CommBank, ANZ, etc.)
+3. **Edge cases**: Test with different phone cameras, lighting conditions, and screen sizes
+
+### Quick Test Script
+
+```bash
+# Install zbar-tools (Linux/Mac)
+# brew install zbar (Mac)
+# apt-get install zbar-tools (Linux)
+
+# Decode a generated QR image
+zbarimg --raw payid-qr.png
+# Expected output: payid:john.doe@example.com
+```
+
+<Tip>
+  Use High (`H`) error correction level if you plan to overlay a logo or icon in the center of the QR code. This uses more data modules but allows up to 30% of the code to be damaged or covered while remaining scannable.
+</Tip>
+
+<Warning>
+  Always serve QR code generation endpoints over HTTPS. Never generate QR codes client-side with sensitive payment details exposed in JavaScript.
+</Warning>

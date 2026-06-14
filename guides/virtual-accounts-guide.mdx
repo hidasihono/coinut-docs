@@ -1,0 +1,378 @@
+---
+title: "Virtual Accounts Guide"
+description: "Deep dive into virtual accounts for fiat payment collection."
+---
+
+Virtual Accounts (VAs) are dedicated fiat bank accounts assigned to each customer for receiving payments. Funds deposited to a VA are automatically linked to that customer's deposits in the Coinut system.
+
+## What is a Virtual Account?
+
+A Virtual Account provides a unique set of banking details for each customer:
+
+- Customer sends fiat to their dedicated VA
+- Coinut detects the incoming transfer
+- Funds are automatically associated with the correct customer
+- No manual reconciliation needed
+
+## Supported Currencies
+
+| Currency | Account Format | Key Fields | Geographic Focus |
+|----------|---------------|------------|-----------------|
+| AUD | BSB + Account Number | `payId`, `bsb`, `accountNumber` | Australia |
+| EUR | IBAN | `iban`, `swift` | Europe |
+| GBP | IBAN / Sort Code | `iban`, `swift` | United Kingdom |
+
+## VA Lifecycle
+
+```
+PENDING → VERIFIED (after compliance review)
+```
+
+A VA starts in `PENDING` status after creation. Once compliance review completes, it transitions to `VERIFIED`. Deposits can typically be received while `PENDING`, but may be held until verification completes.
+
+## Creating VAs
+
+<ParamField body="customerId" type="string" required>
+  The customer ID returned from `POST /customer/create`
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+  The fiat currency: `AUD`, `EUR`, or `GBP`
+</ParamField>
+
+<ParamField body="whitelist" type="object[]">
+  For AUD only. Pre-registers allowed sender bank accounts. Restricts who can deposit.
+</ParamField>
+
+```bash
+POST /virtual-account/create
+```
+
+```json
+{
+  "customerId": "cust_abc123",
+  "currency": "AUD",
+  "whitelist": [
+    {
+      "bsb": "062000",
+      "accountNumber": "12345678"
+    }
+  ]
+}
+```
+
+<ResponseField name="payId" type="string">
+  PayID address for AUD accounts (e.g., `john.doe@example.com`)
+</ResponseField>
+
+<ResponseField name="bsb" type="string">
+  BSB code for AUD accounts (e.g., `062000`)
+</ResponseField>
+
+<ResponseField name="accountNumber" type="string">
+  Account number for AUD accounts
+</ResponseField>
+
+<ResponseField name="iban" type="string">
+  IBAN for EUR and GBP accounts
+</ResponseField>
+
+<ResponseField name="swift" type="string">
+  SWIFT/BIC code for EUR and GBP accounts
+</ResponseField>
+
+## AUD Virtual Accounts & PayID
+
+PayID is an email-address-style identifier for instant bank transfers in Australia. It replaces the need to share BSB and account numbers.
+
+- **Format**: `john.doe@example.com`
+- **Speed**: Near-instant (via NPP/Osko)
+- **Availability**: 24/7, including weekends
+
+### Banks Supporting PayID
+
+Major Australian banks supporting PayID/Osko include:
+
+- Commonwealth Bank
+- ANZ
+- NAB
+- Westpac
+- ING
+- Macquarie Bank
+- Bendigo Bank
+- Suncorp Bank
+
+<Note>
+  Some smaller credit unions and building societies may not support PayID yet. Always display BSB + Account Number as a fallback.
+</Note>
+
+### Display Format
+
+```
+PayID: john.doe@example.com
+BSB: 062000
+Account: 12345678
+```
+
+## EUR/GBP Virtual Accounts
+
+For European and UK customers, VAs use IBAN format:
+
+### EUR (SEPA)
+
+```
+IBAN: DE89370400440532013000
+SWIFT/BIC: COINUTDEFF
+```
+
+- Supports SEPA transfers
+- Settlement typically 1 business day
+- Available for EU/EEA customers
+
+### GBP (Faster Payments / BACS)
+
+```
+IBAN: GB29NWBK60161331926819
+SWIFT/BIC: COINUTGB2L
+Sort Code: 60-16-13 (if applicable)
+```
+
+- Supports Faster Payments (near-instant, up to GBP 1M)
+- Supports BACS (3 business days)
+- Settlement typically 1 business day
+
+## Whitelist Management (AUD Only)
+
+AUD virtual accounts support a whitelist that restricts which bank accounts can send funds. This adds an extra layer of compliance control.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/virtual-account/create-aud-whitelist` | `POST` | Create a new whitelist for an AUD VA |
+| `/virtual-account/update-aud-whitelist` | `POST` | Update an existing whitelist |
+| `/virtual-account/get-aud-whitelist` | `GET` | Retrieve the current whitelist |
+
+### Whitelist Format
+
+```json
+{
+  "customerId": "cust_abc123",
+  "whitelist": [
+    {
+      "bsb": "062000",
+      "accountNumber": "12345678"
+    },
+    {
+      "bsb": "032000",
+      "accountNumber": "87654321"
+    }
+  ]
+}
+```
+
+When a whitelist is active, deposits from non-whitelisted accounts may be rejected or held for manual review.
+
+## Best Practices
+
+- **One VA per customer per currency**. Don't create multiple VAs for the same customer+currency pair.
+- **Store VA details** in your database alongside the customer record for quick lookups.
+- **Display banking details clearly** with copy-to-clipboard buttons in your UI.
+- **Generate QR codes** for PayID to simplify mobile banking.
+- **Monitor `DEPOSIT_RECEIVED`** webhook for incoming funds — don't rely on polling alone.
+- **Handle `NAME_REVIEWING` status** — compliance may flag deposits for manual review.
+
+## QR Code Generation
+
+Generate QR codes for PayID to let customers scan with their banking app.
+
+<CodeGroup>
+```javascript Node.js
+// npm install qrcode
+const QRCode = require('qrcode');
+
+async function generatePayIdQR(payId) {
+  // As data URL for embedding in HTML
+  const dataUrl = await QRCode.toDataURL(`payid:${payId}`, {
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+  return dataUrl; // Use as <img src="{dataUrl}">
+}
+
+async function generatePayIdQRFile(payId, filepath) {
+  // Save to file
+  await QRCode.toFile(filepath, `payid:${payId}`, {
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+}
+
+// Express.js endpoint
+const express = require('express');
+const app = express();
+
+app.get('/qr/payid/:payId', async (req, res) => {
+  const payId = req.params.payId;
+  const dataUrl = await generatePayIdQR(payId);
+  res.send(`<img src="${dataUrl}" alt="PayID QR Code" />`);
+});
+
+// SVG generation (smaller file size)
+async function generatePayIdQRSVG(payId) {
+  const svg = await QRCode.toString(`payid:${payId}`, {
+    type: 'svg',
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+  return svg;
+}
+```
+
+```python Python
+# pip install qrcode[pil]
+import qrcode
+import qrcode.image.svg
+import base64
+from io import BytesIO
+
+
+def generate_payid_qr_data_url(pay_id: str) -> str:
+    """Generate PayID QR code as base64 data URL."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    b64 = base64.b64encode(buffer.read()).decode()
+    return f"data:image/png;base64,{b64}"
+
+
+def generate_payid_qr_file(pay_id: str, filepath: str):
+    """Save PayID QR code to file."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    img.save(filepath)
+
+
+def generate_payid_qr_svg(pay_id: str) -> str:
+    """Generate PayID QR code as SVG string."""
+    factory = qrcode.image.svg.SvgImage
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+        image_factory=factory,
+    )
+    qr.add_data(f"payid:{pay_id}")
+    qr.make(fit=True)
+
+    img = qr.make_image()
+    buffer = BytesIO()
+    img.save(buffer)
+    return buffer.getvalue().decode()
+```
+
+```typescript TypeScript
+// npm install qrcode
+import QRCode from 'qrcode';
+
+export async function generatePayIdQRDataUrl(payId: string): Promise<string> {
+  return QRCode.toDataURL(`payid:${payId}`, {
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+}
+
+export async function generatePayIdQRFile(
+  payId: string,
+  filepath: string
+): Promise<void> {
+  await QRCode.toFile(filepath, `payid:${payId}`, {
+    width: 300,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+  });
+}
+
+// React component
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+
+export const PayIdQRCode: React.FC<{ payId: string }> = ({ payId }) => {
+  const [dataUrl, setDataUrl] = useState<string>('');
+
+  useEffect(() => {
+    QRCode.toDataURL(`payid:${payId}`, {
+      width: 256,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    }).then(setDataUrl);
+  }, [payId]);
+
+  if (!dataUrl) return null;
+
+  return (
+    <div>
+      <img src={dataUrl} alt={`PayID QR: ${payId}`} width={256} height={256} />
+      <p>{payId}</p>
+    </div>
+  );
+};
+```
+
+```bash cURL
+# Create Virtual Account
+curl -X POST https://ramp.hexarails.ai/virtual-account/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $(date +%s)" \
+  -H "X-Nonce: $(date +%s%3N)" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "customerId": "cust_abc123",
+    "currency": "AUD",
+    "whitelist": [
+      { "bsb": "062000", "accountNumber": "12345678" }
+    ]
+  }'
+
+# Response
+# {
+#   "vaId": "va_xyz789",
+#   "payId": "john.doe@example.com",
+#   "bsb": "062000",
+#   "accountNumber": "12345678",
+#   "status": "PENDING"
+# }
+```
+</CodeGroup>
+
+<Tip>
+  Virtual accounts are reusable. A customer can send multiple deposits to the same VA over time. There's no need to create a new VA for each deposit.
+</Tip>
+
+<Warning>
+  Virtual accounts are currency-specific. An AUD VA cannot receive EUR deposits, and vice versa. Create a separate VA for each currency your customers need.
+</Warning>

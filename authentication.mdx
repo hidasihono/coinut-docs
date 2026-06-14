@@ -1,0 +1,443 @@
+---
+title: "Authentication"
+description: "How to authenticate with Coinut Partner Ramp APIs using HMAC-SHA256 request signing."
+---
+
+## Overview
+
+Every request to the Coinut Partner Ramp API must be cryptographically signed using **HMAC-SHA256**. The server verifies the signature against your **API Secret** stored on the Coinut side. Requests without a valid signature are rejected with `401 Unauthorized` or `422 Unprocessable Entity`.
+
+<Warning>
+  Never expose your API Secret in client-side code, frontend applications, or public repositories. It must remain server-side only.
+</Warning>
+
+## Required Headers
+
+Include these four headers in every authenticated request:
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | Your API key |
+| `X-Timestamp` | Yes | Unix timestamp in **seconds** (as string) |
+| `X-Nonce` | Yes | A unique random string per request (e.g., UUID) |
+| `X-Signature` | Yes | HMAC-SHA256 signature (lowercase hex string) |
+
+<Note>
+  The latest machine-readable contract also declares an `X-API-Secret` security scheme, but the
+  narrative signing instructions only require `X-API-Key`, `X-Timestamp`, `X-Nonce`, and `X-Signature`.
+  Confirm the expected header set in sandbox before production rollout.
+</Note>
+
+## How to Generate the Signature
+
+<Steps>
+
+### Step 1: Build the Canonical String
+
+The canonical string is built by joining 7 components with newline (`\n`) delimiters:
+
+```text
+METHOD
+
+HOST
+
+PATH
+
+QUERY
+
+BODY_SHA256_HEX
+
+TIMESTAMP
+
+NONCE
+```
+
+Where:
+
+| Component | Description | Example |
+|-----------|-------------|---------|
+| `METHOD` | Uppercase HTTP method | `GET`, `POST` |
+| `HOST` | Request host (without protocol) | `ramp.hexarails.ai` |
+| `PATH` | Request path (no query string) | `/balance` |
+| `QUERY` | Raw query string **without** leading `?` | `currency=USDT&network=TRX` |
+| `BODY_SHA256_HEX` | SHA-256 of JSON body (empty string for GET/multipart) | `e3b0c44298fc1c149afbf4c8996fb924...` |
+| `TIMESTAMP` | Same as `X-Timestamp` header | `1717900800` |
+| `NONCE` | Same as `X-Nonce` header | `550e8400-e29b-41d4-a716-446655440000` |
+
+<Note>
+  Query parameters are **not re-ordered** or normalized. Use them exactly as they appear in the URL.
+</Note>
+
+### Step 2: Compute SHA-256 of Body (if applicable)
+
+For **JSON requests**: Serialize the body to JSON string, then compute SHA-256 and encode as lowercase hex.
+
+For **GET requests** or **multipart/form-data**: Use an **empty string** for `BODY_SHA256_HEX`.
+
+### Step 3: Generate HMAC-SHA256 Signature
+
+Use your **API Secret** as the HMAC key and the canonical string as the message:
+
+```text
+X-Signature = HMAC_SHA256_HEX(apiSecret, canonicalString)
+```
+
+</Steps>
+
+## Signature Generation — Code Examples
+
+<CodeGroup>
+
+```javascript JavaScript (Node.js)
+import crypto from 'crypto';
+import fetch from 'node-fetch';
+
+const API_KEY = 'YOUR_API_KEY';
+const API_SECRET = 'YOUR_API_SECRET';
+
+async function signAndRequest() {
+  const method = 'POST';
+  const host = 'ramp.hexarails.ai'; // or ramp-sandbox.hexarails.ai
+  const path = '/payment/estimate';
+  const query = ''; // e.g. 'currency=USDT&network=TRX'
+
+  const bodyObject = {
+    // your request body here
+  };
+  const body = JSON.stringify(bodyObject);
+
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+
+  const bodyHash = crypto.createHash('sha256').update(body).digest('hex');
+
+  const canonical = [
+    method.toUpperCase(),
+    host,
+    path,
+    query,
+    bodyHash,
+    timestamp,
+    nonce,
+  ].join('\n');
+
+  const signature = crypto
+    .createHmac('sha256', API_SECRET)
+    .update(canonical)
+    .digest('hex');
+
+  const url = `https://${host}${path}${query ? '?' + query : ''}`;
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Signature': signature,
+    },
+    body,
+  });
+
+  const data = await res.json();
+  console.log(data);
+}
+
+signAndRequest().catch(console.error);
+```
+
+```java Java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Instant;
+import java.util.UUID;
+
+public class CoinutSignatureExample {
+
+    private static String sha256Hex(String data) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(data.getBytes(StandardCharsets.UTF_8));
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hash) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    private static String hmacSha256Hex(String secret, String data) throws Exception {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+        mac.init(keySpec);
+        byte[] result = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+        StringBuilder sb = new StringBuilder();
+        for (byte b : result) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    public static void main(String[] args) throws Exception {
+        String apiKey = "YOUR_API_KEY";
+        String apiSecret = "YOUR_API_SECRET";
+
+        String method = "POST";
+        String host = "ramp.hexarails.ai";
+        String path = "/payment/estimate";
+        String query = "";
+
+        String body = "{\"amount\":100}";
+
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+        String nonce = UUID.randomUUID().toString();
+
+        String bodyHash = body.isEmpty() ? "" : sha256Hex(body);
+
+        String canonical = String.join("\n",
+                method.toUpperCase(),
+                host,
+                path,
+                query,
+                bodyHash,
+                timestamp,
+                nonce
+        );
+
+        String signature = hmacSha256Hex(apiSecret, canonical);
+
+        String url = "https://" + host + path + (query.isEmpty() ? "" : "?" + query);
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("Content-Type", "application/json")
+                .header("X-API-Key", apiKey)
+                .header("X-Timestamp", timestamp)
+                .header("X-Nonce", nonce)
+                .header("X-Signature", signature)
+                .method(method, HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        System.out.println(response.statusCode());
+        System.out.println(response.body());
+    }
+}
+```
+
+```python Python
+import time
+import uuid
+import hmac
+import hashlib
+import json
+import requests
+
+API_KEY = "YOUR_API_KEY"
+API_SECRET = "YOUR_API_SECRET"
+
+
+def sha256_hex(data: str) -> str:
+    return hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def hmac_sha256_hex(secret: str, data: str) -> str:
+    return hmac.new(
+        secret.encode("utf-8"),
+        data.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+def main():
+    method = "POST"
+    host = "ramp.hexarails.ai"  # or ramp-sandbox.hexarails.ai
+    path = "/payment/estimate"
+    query = ""  # e.g. "currency=USDT&network=TRX"
+
+    body_obj = {
+        # your request body here
+    }
+    body = json.dumps(body_obj, separators=(",", ":"))
+
+    timestamp = str(int(time.time()))
+    nonce = str(uuid.uuid4())
+
+    body_hash = sha256_hex(body) if body else ""
+
+    canonical = "\n".join(
+        [
+            method.upper(),
+            host,
+            path,
+            query,
+            body_hash,
+            timestamp,
+            nonce,
+        ]
+    )
+
+    signature = hmac_sha256_hex(API_SECRET, canonical)
+
+    url = f"https://{host}{path}"
+    if query:
+        url += f"?{query}"
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    }
+
+    resp = requests.post(url, headers=headers, data=body)
+    print(resp.status_code)
+    print(resp.text)
+
+
+if __name__ == "__main__":
+    main()
+```
+
+</CodeGroup>
+
+## Complete Authenticated Request Example
+
+The following shows a full `GET /balance` request with all headers and a sample response.
+
+### Request
+
+```bash
+curl https://ramp-sandbox.hexarails.ai/balance \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "X-Timestamp: 1717900800" \
+  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-Signature: a3f7c9...e2d1b8"
+```
+
+### Response (New API — 200 OK)
+
+<ResponseField name="status" type="string">
+  Always `SUCCESS` for successful requests.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  List of balance objects, one per currency.
+</ResponseField>
+
+```json
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "balance": "1000.00",
+      "currency": "USD"
+    },
+    {
+      "balance": "25000.000000",
+      "currency": "USDT"
+    }
+  ]
+}
+```
+
+## Error Responses
+
+| Status Code | Meaning | Resolution |
+|------------|---------|-----------|
+| `422` | Invalid parameters, authentication failure, or failed operation | Verify the canonical string, headers, and request body |
+| `401` | Possible gateway or middleware authentication failure | Handle defensively even though the latest contract primarily documents `422` |
+
+## IP Whitelisting
+
+Restrict API access to your server IP addresses for additional security.
+
+### Get Current IP Whitelist
+
+```bash
+curl https://ramp-sandbox.hexarails.ai/ip-white-list \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+### Update IP Whitelist
+
+```bash
+curl -X POST https://ramp-sandbox.hexarails.ai/ip-white-list \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "ipWhiteList": ["115.236.134.118", "47.89.58.120"]
+  }'
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `ipWhiteList` | Yes | Array of IP addresses. Empty array `[]` means **no restriction**. |
+
+## Best Practices
+
+### Use Unique Nonces
+
+Never reuse a nonce. Each request must have a unique `X-Nonce` value.
+
+```javascript Correct
+const nonce = crypto.randomUUID();  // always unique
+```
+
+```javascript Incorrect
+const nonce = "1234567890";  // never reuse hardcoded nonces
+```
+
+### Use Timestamp in Seconds
+
+The `X-Timestamp` must be a **Unix timestamp in seconds** (not milliseconds or microseconds).
+
+| Language | Expression | Output |
+|----------|-----------|--------|
+| JavaScript | `Math.floor(Date.now() / 1000)` | `1717900800` |
+| Python | `str(int(time.time()))` | `1717900800` |
+| Java | `String.valueOf(Instant.now().getEpochSecond())` | `1717900800` |
+
+### Store Secrets Server-Side
+
+| Do | Don't |
+|----|-------|
+| Store in environment variables (`process.env.API_SECRET`) | Hardcode in source files |
+| Use a secrets manager (AWS Secrets Manager, HashiCorp Vault) | Log to console or debug output |
+| Load at runtime from secure storage | Pass in URL query parameters |
+| Restrict access via IAM roles | Commit to Git repositories |
+
+### Rotate Secrets Regularly
+
+1. Generate a new key pair from the partner dashboard
+2. Update your server environment with the new secret
+3. Test the new credentials in sandbox
+4. Revoke the old key pair
+
+<Note>
+  You can have multiple active key pairs during rotation. Revoke the old key only after confirming the new one works in production.
+</Note>
+
+## API Environments
+
+| Environment | Base URL | Use Case |
+|-------------|----------|----------|
+| **Sandbox** | `https://ramp-sandbox.hexarails.ai` | Development and testing |
+| **Production** | `https://ramp.hexarails.ai` | Live transactions |
+
+<Warning>
+  API keys are environment-specific. A sandbox key will not work in production.
+</Warning>

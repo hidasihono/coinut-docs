@@ -1,0 +1,535 @@
+---
+title: "Offramp Integration"
+description: "Complete guide to implementing crypto-to-fiat offramp flows."
+---
+
+Offramp lets your customers convert cryptocurrency into fiat currency deposited directly to their bank account. This guide covers the full implementation from crypto deposit to fiat settlement.
+
+## What is Offramp?
+
+Offramp lets your customers convert cryptocurrency (USDT) into fiat currency deposited to their bank account. The flow works like this:
+
+1. Customer sends crypto to a deposit address
+2. Coinut detects the deposit
+3. Coinut executes the trade
+4. Fiat arrives in the customer's bank account
+
+## Architecture
+
+```
+Partner App -> Coinut API -> Deposit Address -> Deposit Detection -> Trade -> Fiat Bank Transfer
+```
+
+## Prerequisites
+
+Before starting an offramp flow, ensure:
+
+- Customer has `APPROVED` KYC status
+- Customer's bank account has been added and verified
+- You have the bank account ID from the `POST /bank-account/add` response
+
+## Step-by-Step Implementation
+
+<Steps>
+  <Step title="Create Customer">
+    Same as onramp. Call `POST /customer/create` with name, email, `type="DEPOSITOR"`, `isIndividual=true`. Wait for `CUSTOMER_APPROVED` webhook.
+  </Step>
+
+  <Step title="Add Bank Account">
+    Call `POST /bank-account/add` with the customer's banking details.
+
+    ```json
+    {
+      "customerId": "cust_abc123",
+      "currency": "EUR",
+      "bankName": "Deutsche Bank",
+      "accountNo": "1234567890",
+      "iban": "DE89370400440532013000",
+      "swift": "DEUTDEFF",
+      "accountName": "John Doe"
+    }
+    ```
+
+    Store the returned `bankAccountId`. Required fields vary by currency — see the [Bank Account Requirements](#bank-account-requirements) table below.
+  </Step>
+
+  <Step title="Create Offramp Flow">
+    Call `POST /autoramp-flow/offramp` with the crypto source and fiat destination:
+
+    ```json
+    {
+      "from": {
+        "customerId": "cust_abc123",
+        "currency": "USDT",
+        "network": "ETH"
+      },
+      "to": "bank_account_id_from_step_2"
+    }
+    ```
+
+    This creates a deposit address and links incoming crypto to automatic fiat conversion.
+  </Step>
+
+  <Step title="Display Deposit Address">
+    Retrieve the deposit address from the flow creation response or call `GET /deposit-address/detail`:
+
+    ```json
+    {
+      "address": "0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E",
+      "network": "ETH",
+      "currency": "USDT"
+    }
+    ```
+
+    Display this address to the customer with a clear warning to send only on the specified network.
+  </Step>
+
+  <Step title="Customer Sends Crypto">
+    Customer sends USDT to the displayed address on the specified network (ETH or TRX). Provide clear instructions:
+
+    - Minimum deposit amount
+    - Correct network only (wrong network = lost funds)
+    - Include memo/tag if required
+  </Step>
+
+  <Step title="Monitor Deposits">
+    Listen for webhook events:
+    - `DEPOSIT_RECEIVED` — crypto detected on-chain
+    - `DEPOSIT_APPROVED` — confirmations reached, deposit cleared
+  </Step>
+
+  <Step title="Track Trade">
+    After deposit approval:
+    - `TRADE_CREATED` — fiat trade initiated
+    - `TRADE_SETTLED` — trade executed, fiat queued for bank transfer
+  </Step>
+
+  <Step title="Fiat Arrives">
+    After `TRADE_SETTLED`, fiat is sent to the bank account via banking rails. Settlement time depends on currency:
+
+    | Currency | Typical Time |
+    |----------|-------------|
+    | USD | 1-2 business days |
+    | EUR | 1 business day (SEPA) |
+    | GBP | 1 business day (Faster Payments) |
+    | CAD | 1 business day |
+    | AUD | 1 business day |
+  </Step>
+</Steps>
+
+## Bank Account Requirements
+
+| Currency | Required Fields | Optional Fields | Typical Settlement |
+|----------|----------------|----------------|-------------------|
+| USD | `bankName`, `accountNo`, `aba` OR `swift` | `accountName`, `bankAddress` | 1-2 business days |
+| EUR | `bankName`, `accountNo` OR `iban`, `swift` | `accountName`, `bankAddress` | 1 business day |
+| GBP | `bankName`, `accountNo` OR `iban`, `swift` | `accountName`, `sortCode` | 1 business day |
+| CAD | `bankName`, `accountNo`, `institutionNumber`, `transit` | `accountName` | 1 business day |
+| AUD | `bankName`, `accountNo`, `bsb` | `accountName` | 1 business day |
+
+<Note>
+  Always include `accountName` when available. Some banks require an exact name match for compliance.
+</Note>
+
+## Complete Code Example
+
+<CodeGroup>
+```python Python
+import os
+import json
+import hmac
+import hashlib
+import time
+import uuid
+import requests
+
+BASE_URL = "https://ramp.hexarails.ai"
+API_KEY = os.environ["COINUT_API_KEY"]
+API_SECRET = os.environ["COINUT_API_SECRET"]
+
+
+def create_signature(method: str, path: str, body: dict = None):
+    timestamp = str(int(time.time()))
+    nonce = str(uuid.uuid4())
+    host = "ramp.hexarails.ai"
+    request_body = "" if method.upper() == "GET" else json.dumps(body or {}, separators=(",", ":"))
+    body_hash = hashlib.sha256(request_body.encode()).hexdigest() if request_body else ""
+    payload = "\n".join([method.upper(), host, path, "", body_hash, timestamp, nonce])
+    signature = hmac.new(API_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return timestamp, nonce, signature
+
+
+def coinut_request(method: str, path: str, body: dict = None):
+    timestamp, nonce, signature = create_signature(method, path, body)
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    }
+
+    resp = requests.request(method, f"{BASE_URL}{path}", json=body, headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def create_customer(name: str, email: str, external_id: str) -> str:
+    data = coinut_request("POST", "/customer/create", {
+        "name": name,
+        "email": email,
+        "type": "DEPOSITOR",
+        "isIndividual": True,
+        "externalId": external_id,
+    })
+    return data["customerId"]
+
+
+def add_bank_account(
+    customer_id: str,
+    currency: str,
+    bank_name: str,
+    account_no: str,
+    **kwargs
+) -> str:
+    """Add a bank account. Required fields vary by currency."""
+    body = {
+        "customerId": customer_id,
+        "currency": currency,
+        "bankName": bank_name,
+        "accountNo": account_no,
+        **kwargs,
+    }
+    data = coinut_request("POST", "/bank-account/add", body)
+    return data["bankAccountId"]
+
+
+def create_offramp_flow(customer_id: str, network: str, bank_account_id: str):
+    return coinut_request("POST", "/autoramp-flow/offramp", {
+        "from": {
+            "customerId": customer_id,
+            "currency": "USDT",
+            "network": network,  # "ETH" or "TRX"
+        },
+        "to": bank_account_id,
+    })
+
+
+def execute_offramp(user: dict, bank_details: dict):
+    """Full offramp flow for a user."""
+    # Step 1: Create customer (wait for CUSTOMER_APPROVED webhook)
+    customer_id = create_customer(user["name"], user["email"], user["id"])
+
+    # Step 2: Add bank account
+    bank_account_id = add_bank_account(
+        customer_id=customer_id,
+        currency=bank_details["currency"],
+        bank_name=bank_details["bank_name"],
+        account_no=bank_details["account_no"],
+        swift=bank_details.get("swift"),
+        iban=bank_details.get("iban"),
+        bsb=bank_details.get("bsb"),
+        aba=bank_details.get("aba"),
+        accountName=user["name"],
+    )
+
+    # Step 3: Create offramp flow
+    flow = create_offramp_flow(customer_id, bank_details["network"], bank_account_id)
+
+    return {
+        "customerId": customer_id,
+        "bankAccountId": bank_account_id,
+        "flowId": flow["flowId"],
+        "depositAddress": flow["data"]["depositAddress"],
+    }
+
+
+# ── Webhook Handler (Flask) ──────────────────────────
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route("/webhooks/coinut", methods=["POST"])
+def handle_webhook():
+    event = request.json.get("event")
+    data = request.json.get("data")
+
+    handlers = {
+        "DEPOSIT_RECEIVED": handle_deposit_received,
+        "DEPOSIT_APPROVED": handle_deposit_approved,
+        "TRADE_CREATED": handle_trade_created,
+        "TRADE_SETTLED": handle_trade_settled,
+    }
+
+    handler = handlers.get(event)
+    if handler:
+        handler(data)
+
+    return jsonify({"status": "ok"})
+
+
+def handle_deposit_received(data):
+    print(f"Deposit received: {data['amount']} {data['currency']}")
+    # Notify customer that funds are being processed
+
+
+def handle_deposit_approved(data):
+    print(f"Deposit approved. Trade will execute shortly.")
+
+
+def handle_trade_created(data):
+    print(f"Trade created: {data['tradeId']}")
+
+
+def handle_trade_settled(data):
+    print(f"Trade settled! Fiat sent to bank account.")
+    # Send customer notification
+
+
+if __name__ == "__main__":
+    app.run(port=3000)
+```
+
+```javascript Node.js
+const axios = require('axios');
+const crypto = require('crypto');
+
+const BASE_URL = 'https://ramp.hexarails.ai';
+const API_KEY = process.env.COINUT_API_KEY;
+const API_SECRET = process.env.COINUT_API_SECRET;
+
+function createSignature(method, path, body = {}) {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const host = new URL(BASE_URL).host;
+  const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body);
+  const bodyHash = requestBody
+    ? crypto.createHash('sha256').update(requestBody).digest('hex')
+    : '';
+  const payload = [
+    method.toUpperCase(),
+    host,
+    path,
+    '',
+    bodyHash,
+    timestamp,
+    nonce,
+  ].join('\n');
+  const signature = crypto.createHmac('sha256', API_SECRET).update(payload).digest('hex');
+  return { timestamp, nonce, signature };
+}
+
+async function coinutRequest(method, path, body) {
+  const { timestamp, nonce, signature } = createSignature(method, path, body);
+
+  const { data } = await axios({
+    method,
+    url: `${BASE_URL}${path}`,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Signature': signature,
+    },
+    data: body,
+  });
+  return data;
+}
+
+async function addBankAccount(customerId, currency, bankDetails) {
+  const fieldMap = {
+    USD: ['bankName', 'accountNo', 'aba'],
+    EUR: ['bankName', 'accountNo', 'swift'],
+    GBP: ['bankName', 'accountNo', 'swift'],
+    CAD: ['bankName', 'accountNo', 'institutionNumber', 'transit'],
+    AUD: ['bankName', 'accountNo', 'bsb'],
+  };
+
+  const body = {
+    customerId,
+    currency,
+    ...bankDetails,
+  };
+
+  const { bankAccountId } = await coinutRequest('POST', '/bank-account/add', body);
+  return bankAccountId;
+}
+
+async function createOfframpFlow(customerId, network, bankAccountId) {
+  const { data } = await coinutRequest('POST', '/autoramp-flow/offramp', {
+    from: {
+      customerId,
+      currency: 'USDT',
+      network,
+    },
+    to: bankAccountId,
+  });
+  return data;
+}
+
+// Execute full offramp
+async function executeOfframp(customerId, network, bankAccountId) {
+  const flow = await createOfframpFlow(customerId, network, bankAccountId);
+
+  return {
+    flowId: flow.flowId,
+    depositAddress: flow.data.depositAddress,
+    network: flow.data.network,
+  };
+}
+
+module.exports = { addBankAccount, createOfframpFlow, executeOfframp };
+```
+
+```typescript TypeScript
+import axios from 'axios';
+import * as crypto from 'crypto';
+
+const BASE_URL = 'https://ramp.hexarails.ai';
+
+interface BankDetails {
+  bankName: string;
+  accountNo: string;
+  accountName?: string;
+  swift?: string;
+  iban?: string;
+  bsb?: string;
+  aba?: string;
+  sortCode?: string;
+  institutionNumber?: string;
+  transit?: string;
+}
+
+interface OfframpFlow {
+  flowId: string;
+  data: {
+    depositAddress: string;
+    network: string;
+  };
+}
+
+export class CoinutOfframpClient {
+  private apiKey: string;
+  private apiSecret: string;
+
+  constructor(apiKey: string, apiSecret: string) {
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+  }
+
+  private createSignature(
+    method: string,
+    path: string,
+    body?: object
+  ): { timestamp: string; nonce: string; signature: string } {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomUUID();
+    const host = new URL(BASE_URL).host;
+    const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body ?? {});
+    const bodyHash = requestBody
+      ? crypto.createHash('sha256').update(requestBody).digest('hex')
+      : '';
+    const payload = [
+      method.toUpperCase(),
+      host,
+      path,
+      '',
+      bodyHash,
+      timestamp,
+      nonce,
+    ].join('\n');
+    const signature = crypto.createHmac('sha256', this.apiSecret).update(payload).digest('hex');
+    return { timestamp, nonce, signature };
+  }
+
+  private async request<T>(method: string, path: string, body?: object): Promise<T> {
+    const { timestamp, nonce, signature } = this.createSignature(method, path, body);
+
+    const { data } = await axios({
+      method,
+      url: `${BASE_URL}${path}`,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': this.apiKey,
+        'X-Timestamp': timestamp,
+        'X-Nonce': nonce,
+        'X-Signature': signature,
+      },
+      data: body,
+    });
+    return data;
+  }
+
+  async addBankAccount(customerId: string, currency: string, details: BankDetails): Promise<string> {
+    const response = await this.request<{ bankAccountId: string }>('POST', '/bank-account/add', {
+      customerId,
+      currency,
+      ...details,
+    });
+    return response.bankAccountId;
+  }
+
+  async createOfframpFlow(customerId: string, network: 'ETH' | 'TRX', bankAccountId: string): Promise<OfframpFlow> {
+    return this.request<OfframpFlow>('POST', '/autoramp-flow/offramp', {
+      from: { customerId, currency: 'USDT', network },
+      to: bankAccountId,
+    });
+  }
+}
+```
+
+```bash cURL
+# Add EUR Bank Account
+curl -X POST https://ramp.hexarails.ai/bank-account/add \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $(date +%s)" \
+  -H "X-Nonce: $(date +%s%3N)" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "customerId": "cust_abc123",
+    "currency": "EUR",
+    "bankName": "Deutsche Bank",
+    "accountNo": "1234567890",
+    "iban": "DE89370400440532013000",
+    "swift": "DEUTDEFF",
+    "accountName": "John Doe"
+  }'
+
+# Create Offramp Flow
+curl -X POST https://ramp.hexarails.ai/autoramp-flow/offramp \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $(date +%s)" \
+  -H "X-Nonce: $(date +%s%3N)" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "from": {
+      "customerId": "cust_abc123",
+      "currency": "USDT",
+      "network": "ETH"
+    },
+    "to": "bank_acc_id_xyz789"
+  }'
+```
+</CodeGroup>
+
+## Go-Live Checklist
+
+- [ ] Bank account validation working for all target currencies
+- [ ] Deposit address generation tested in sandbox
+- [ ] End-to-end flow verified with test transfers
+- [ ] Webhook handlers for all deposit and trade events
+- [ ] Error handling for insufficient funds and invalid addresses
+- [ ] Banking cutoff times documented for customer communication
+- [ ] Retry logic for failed bank transfers
+
+<Warning>
+  Always verify the deposit address network matches the network the customer will send on. Sending USDT on the wrong network (e.g., sending TRC-20 to an ERC-20 address) will result in lost funds.
+</Warning>
+
+<Note>
+  Banking cutoff times vary by currency and institution. EUR SEPA transfers typically process until 3:00 PM CET. USD ACH transfers have a 5:00 PM ET cutoff. Communicate these timelines to your customers.
+</Note>

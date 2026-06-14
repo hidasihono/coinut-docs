@@ -1,0 +1,417 @@
+---
+title: "Deposit Addresses"
+description: "Create and manage crypto deposit addresses for offramp flows."
+---
+
+<Note>
+Deposit addresses are **source/entry addresses** for offramp flows. The customer sends crypto **to** this address, and Coinut converts it to fiat.
+
+Crypto addresses (destination addresses) are where funds go **to** the customer after an onramp.
+</Note>
+
+---
+
+## Create Deposit Address
+
+`POST /deposit-address/create`
+
+Generate a deposit address that a customer sends crypto to for offramp conversion.
+
+### Body
+
+<ParamField body="customerId" type="string" required>
+Customer UUID.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+Crypto currency code (e.g. `USDT`, `BTC`).
+</ParamField>
+
+<ParamField body="network" type="string" required>
+Blockchain network (e.g. `ETH`, `TRX`, `BTC`).
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://ramp.hexarails.ai/deposit-address/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}" \
+  -d '{
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "currency": "USDT",
+    "network": "ETH"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://ramp.hexarails.ai/deposit-address/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    customerId: "550e8400-e29b-41d4-a716-446655440000",
+    currency: "USDT",
+    network: "ETH",
+  }),
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://ramp.hexarails.ai/deposit-address/create",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    json={
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+        "currency": "USDT",
+        "network": "ETH",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch("https://ramp.hexarails.ai/deposit-address/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    customerId: "550e8400-e29b-41d4-a716-446655440000",
+    currency: "USDT",
+    network: "ETH",
+  }),
+});
+
+const result: {
+  status: string;
+  data: DepositAddressDetailDto;
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "PENDING",
+    "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+    "network": "ETH",
+    "currency": "USDT"
+  }
+}
+```
+
+---
+
+## List Deposit Addresses
+
+`GET /deposit-address/list`
+
+Retrieve a paginated, filterable list of deposit addresses.
+
+### Query Parameters
+
+<ParamField query="pageNum" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField query="pageSize" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField query="customerId" type="string">
+Filter by customer UUID.
+</ParamField>
+
+<ParamField query="currency" type="string">
+Filter by crypto currency.
+</ParamField>
+
+<ParamField query="network" type="string">
+Filter by blockchain network.
+</ParamField>
+
+<ParamField query="status" type="string">
+Filter by status: `PENDING`, `VERIFIED`, `REJECTED`, `DELETED`.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl "https://ramp.hexarails.ai/deposit-address/list?pageNum=1&pageSize=10&customerId=550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  pageNum: "1",
+  pageSize: "10",
+  customerId: "550e8400-e29b-41d4-a716-446655440000",
+  status: "VERIFIED",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/deposit-address/list?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://ramp.hexarails.ai/deposit-address/list",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    params={
+        "pageNum": 1,
+        "pageSize": 10,
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+        "status": "VERIFIED",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  pageNum: "1",
+  pageSize: "10",
+  customerId: "550e8400-e29b-41d4-a716-446655440000",
+  status: "VERIFIED",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/deposit-address/list?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result: {
+  status: string;
+  data: {
+    list: DepositAddressDetailDto[];
+    total: number;
+    pageNum: number;
+    pageSize: number;
+  };
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "list": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440002",
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+        "status": "VERIFIED",
+        "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+        "network": "ETH",
+        "currency": "USDT"
+      }
+    ],
+    "total": 1,
+    "pageNum": 1,
+    "pageSize": 10
+  }
+}
+```
+
+---
+
+## Get Deposit Address Detail
+
+`GET /deposit-address/detail`
+
+Retrieve a single deposit address by ID.
+
+### Query Parameters
+
+<ParamField query="id" type="string" required>
+Deposit address UUID.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl "https://ramp.hexarails.ai/deposit-address/detail?id=550e8400-e29b-41d4-a716-446655440002" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440002",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/deposit-address/detail?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://ramp.hexarails.ai/deposit-address/detail",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    params={"id": "550e8400-e29b-41d4-a716-446655440002"},
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440002",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/deposit-address/detail?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result: {
+  status: string;
+  data: DepositAddressDetailDto;
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "VERIFIED",
+    "address": "0xabcdef1234567890abcdef1234567890abcdef12",
+    "network": "ETH",
+    "currency": "USDT"
+  }
+}
+```
+
+---
+
+## Status Lifecycle
+
+A deposit address moves through the following states:
+
+```
+PENDING  -->  VERIFIED  -->  DELETED
+  |
+  v
+REJECTED
+```
+
+| Status | Description |
+|--------|-------------|
+| `PENDING` | Address created, awaiting verification. |
+| `VERIFIED` | Address confirmed and active. Ready to receive deposits. |
+| `REJECTED` | Address creation failed or was rejected. |
+| `DELETED` | Address has been deactivated. |
+
+<Warning>
+Only deposit addresses in `VERIFIED` status should be presented to customers for sending funds. `PENDING` addresses may not be ready to receive deposits yet.
+</Warning>
+
+---
+
+## Data Model
+
+### DepositAddressDetailDto
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string (UUID) | Unique deposit address identifier. |
+| `customerId` | string (UUID) | Associated customer. |
+| `status` | string | One of: `PENDING`, `VERIFIED`, `REJECTED`, `DELETED`. |
+| `address` | string | Blockchain deposit address. |
+| `network` | string | Blockchain network. |
+| `currency` | string | Crypto currency code. |

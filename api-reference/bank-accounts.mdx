@@ -1,0 +1,469 @@
+---
+title: "Bank Accounts"
+description: "Add and manage customer bank accounts for offramp and payment operations."
+---
+
+Bank accounts are the fiat destination for offramp flows. After a customer's crypto deposit is detected and traded, the resulting fiat is sent to the registered bank account.
+
+---
+
+## Add Bank Account
+
+`POST /bank-account/add`
+
+Register a customer's bank account. This endpoint accepts `multipart/form-data` to support file upload.
+
+### Body
+
+<ParamField body="customerId" type="string" required>
+Customer UUID.
+</ParamField>
+
+<ParamField body="currency" type="string" required>
+Fiat currency code: `USD`, `EUR`, `GBP`, `CAD`, `AUD`.
+</ParamField>
+
+<ParamField body="bankName" type="string" required>
+Name of the bank.
+</ParamField>
+
+<ParamField body="accountNo" type="string">
+Bank account number. Required unless using IBAN for EUR/GBP.
+</ParamField>
+
+<ParamField body="swift" type="string">
+SWIFT/BIC code. Required for wire transfers.
+</ParamField>
+
+<ParamField body="bankCountry" type="string">
+Country where the bank is located (ISO 3166-1 alpha-2).
+</ParamField>
+
+<ParamField body="bankAddress" type="string">
+Bank branch address.
+</ParamField>
+
+<ParamField body="aba" type="string">
+ABA routing number. Required for USD ACH transfers.
+</ParamField>
+
+<ParamField body="iban" type="string">
+International Bank Account Number. Used for EUR and GBP.
+</ParamField>
+
+<ParamField body="beneficiaryName" type="string">
+Name of the account holder.
+</ParamField>
+
+<ParamField body="beneficiaryAddress" type="string">
+Address of the account holder.
+</ParamField>
+
+<ParamField body="interBankName" type="string">
+Intermediary bank name (for international wires).
+</ParamField>
+
+<ParamField body="interBankBic" type="string">
+Intermediary bank BIC/SWIFT.
+</ParamField>
+
+<ParamField body="interBankAccountNo" type="string">
+Intermediary bank account number.
+</ParamField>
+
+<ParamField body="institutionNumber" type="string">
+Institution number. Required for CAD accounts.
+</ParamField>
+
+<ParamField body="transit" type="string">
+Transit number. Required for CAD accounts.
+</ParamField>
+
+<ParamField body="label" type="string">
+Friendly display name (e.g. "Primary Checking").
+</ParamField>
+
+<ParamField body="statementFile" type="file">
+Bank statement PDF or image. **Required for first-time bank account addition.**
+</ParamField>
+
+### Field Requirements by Currency
+
+| Currency | Required Fields | Optional Fields |
+|----------|----------------|-----------------|
+| `USD` (ACH) | `bankName`, `accountNo`, `aba` | `swift` (for wire) |
+| `USD` (Wire) | `bankName`, `accountNo`, `swift` | `aba` |
+| `EUR` | `bankName`, `accountNo` or `iban`, `swift` | `bankCountry`, `bankAddress` |
+| `GBP` | `bankName`, `accountNo` or `iban`, `swift` | `bankCountry`, `bankAddress` |
+| `CAD` | `bankName`, `accountNo`, `institutionNumber`, `transit` | `swift` |
+| `AUD` | `bankName`, `accountNo` | `bsb` |
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://ramp.hexarails.ai/bank-account/add \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}" \
+  -F "customerId=550e8400-e29b-41d4-a716-446655440000" \
+  -F "currency=USD" \
+  -F "bankName=Chase Bank" \
+  -F "accountNo=1234567890" \
+  -F "swift=CHASUS33" \
+  -F "label=Primary Checking" \
+  -F "statementFile=@/path/to/bank_statement.pdf"
+```
+
+```javascript JavaScript
+const formData = new FormData();
+formData.append("customerId", "550e8400-e29b-41d4-a716-446655440000");
+formData.append("currency", "USD");
+formData.append("bankName", "Chase Bank");
+formData.append("accountNo", "1234567890");
+formData.append("swift", "CHASUS33");
+formData.append("label", "Primary Checking");
+formData.append("statementFile", fileInput.files[0]);
+
+const response = await fetch("https://ramp.hexarails.ai/bank-account/add", {
+  method: "POST",
+  headers: {
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: formData,
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://ramp.hexarails.ai/bank-account/add",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    data={
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+        "currency": "USD",
+        "bankName": "Chase Bank",
+        "accountNo": "1234567890",
+        "swift": "CHASUS33",
+        "label": "Primary Checking",
+    },
+    files={"statementFile": open("/path/to/bank_statement.pdf", "rb")},
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const formData = new FormData();
+formData.append("customerId", "550e8400-e29b-41d4-a716-446655440000");
+formData.append("currency", "USD");
+formData.append("bankName", "Chase Bank");
+formData.append("accountNo", "1234567890");
+formData.append("swift", "CHASUS33");
+formData.append("label", "Primary Checking");
+formData.append("statementFile", fileBlob);
+
+const response = await fetch("https://ramp.hexarails.ai/bank-account/add", {
+  method: "POST",
+  headers: {
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: formData,
+});
+
+const result: {
+  status: string;
+  data: BankAccountDetailDto;
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440003",
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "currency": "USD",
+    "bankName": "Chase Bank",
+    "accountNo": "1234567890",
+    "swift": "CHASUS33",
+    "createTime": "2024-01-01T00:00:00Z",
+    "updateTime": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+<Warning>
+`statementFile` is **required** for first-time bank account addition per customer. Subsequent accounts for the same customer may not require it. The file should be a recent bank statement (PDF, JPG, or PNG) clearly showing the account holder name and account details.
+</Warning>
+
+---
+
+## List Bank Accounts
+
+`GET /bank-account/list`
+
+Retrieve a paginated list of bank accounts.
+
+### Query Parameters
+
+<ParamField query="pageNum" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField query="pageSize" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField query="customerId" type="string">
+Filter by customer UUID.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl "https://ramp.hexarails.ai/bank-account/list?pageNum=1&pageSize=10&customerId=550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  pageNum: "1",
+  pageSize: "10",
+  customerId: "550e8400-e29b-41d4-a716-446655440000",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/bank-account/list?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://ramp.hexarails.ai/bank-account/list",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    params={
+        "pageNum": 1,
+        "pageSize": 10,
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  pageNum: "1",
+  pageSize: "10",
+  customerId: "550e8400-e29b-41d4-a716-446655440000",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/bank-account/list?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result: {
+  status: string;
+  data: {
+    list: BankAccountDetailDto[];
+    total: number;
+    pageNum: number;
+    pageSize: number;
+  };
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "list": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440003",
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+        "currency": "USD",
+        "bankName": "Chase Bank",
+        "accountNo": "1234567890",
+        "swift": "CHASUS33",
+        "createTime": "2024-01-01T00:00:00Z",
+        "updateTime": "2024-01-01T00:00:00Z"
+      }
+    ],
+    "total": 1,
+    "pageNum": 1,
+    "pageSize": 10
+  }
+}
+```
+
+---
+
+## Get Bank Account Detail
+
+`GET /bank-account/detail`
+
+Retrieve a single bank account by ID.
+
+### Query Parameters
+
+<ParamField query="id" type="string" required>
+Bank account UUID.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl "https://ramp.hexarails.ai/bank-account/detail?id=550e8400-e29b-41d4-a716-446655440003" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440003",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/bank-account/detail?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://ramp.hexarails.ai/bank-account/detail",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    params={"id": "550e8400-e29b-41d4-a716-446655440003"},
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440003",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/bank-account/detail?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result: {
+  status: string;
+  data: BankAccountDetailDto;
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440003",
+    "customerId": "550e8400-e29b-41d4-a716-446655440000",
+    "currency": "USD",
+    "bankName": "Chase Bank",
+    "accountNo": "1234567890",
+    "swift": "CHASUS33",
+    "createTime": "2024-01-01T00:00:00Z",
+    "updateTime": "2024-01-01T00:00:00Z"
+  }
+}
+```
+
+---
+
+## Data Model
+
+### BankAccountDetailDto
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string (UUID) | Unique bank account identifier. |
+| `customerId` | string (UUID) | Associated customer. |
+| `currency` | string | Fiat currency code. |
+| `bankName` | string | Name of the bank. |
+| `accountNo` | string | Bank account number. |
+| `swift` | string | SWIFT/BIC code. |
+| `createTime` | string (ISO 8601) | Record creation timestamp. |
+| `updateTime` | string (ISO 8601) | Last update timestamp. |
