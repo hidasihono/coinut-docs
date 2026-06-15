@@ -6,7 +6,6 @@ description: "Monitor customer deposits across fiat and crypto rails."
 ## Status Lifecycle
 
 <Steps>
-  <Step title="RECEIVED">Deposit has been detected on-chain or via bank notification.</Step>
   <Step title="Review Queue">
     Deposit enters one of four review paths:
 
@@ -16,13 +15,12 @@ description: "Monitor customer deposits across fiat and crypto rails."
     - `ACTION_REQUIRED` — manual action needed from partner
   </Step>
   <Step title="Resolution">
-
     - `CONFIRMED` — deposit cleared and available for conversion
     - `REFUNDING` → `REFUNDED` — funds being returned to sender
   </Step>
 </Steps>
 
-```
+```text
 RECEIVED → NAME_REVIEWING ───────────────→ CONFIRMED
          → THRESHOLD_PENDING ─────────────→ CONFIRMED
          → COMPLIANCE_REVIEWING ──→ CONFIRMED
@@ -31,7 +29,7 @@ RECEIVED → NAME_REVIEWING ───────────────→ CON
 ```
 
 | Status | Description |
-|--------|-------------|
+| --- | --- |
 | `RECEIVED` | Deposit detected, awaiting processing |
 | `NAME_REVIEWING` | Sender name verification in progress |
 | `THRESHOLD_PENDING` | Large deposit pending threshold approval |
@@ -47,11 +45,9 @@ RECEIVED → NAME_REVIEWING ───────────────→ CON
 
 Retrieve a paginated list of deposits for your partner account. Filter by customer, currency, or status.
 
-<ParamField query="pageNum" type="number" default="1">Page number</ParamField>
-<ParamField query="pageSize" type="number" default="10">Items per page</ParamField>
-<ParamField query="customerId" type="string" optional>Filter by customer ID</ParamField>
-<ParamField query="currency" type="string" optional>Filter by currency code (e.g. USDT, USD)</ParamField>
-<ParamField query="status" type="string" optional>
+   
+
+<ParamField query="status" type="string">
   Filter by status. One of: `RECEIVED`, `NAME_REVIEWING`, `THRESHOLD_PENDING`, `COMPLIANCE_REVIEWING`, `CONFIRMED`, `ACTION_REQUIRED`, `REFUNDING`, `REFUNDED`
 </ParamField>
 
@@ -127,11 +123,7 @@ const data = await response.json();
 
 ### Response
 
-<ResponseField name="status" type="string">`SUCCESS` or `ERROR`</ResponseField>
-<ResponseField name="data.list" type="array">Array of deposit objects</ResponseField>
-<ResponseField name="data.total" type="number">Total matching records</ResponseField>
-<ResponseField name="data.pageNum" type="number">Current page</ResponseField>
-<ResponseField name="data.pageSize" type="number">Page size</ResponseField>
+    
 
 ```json
 {
@@ -164,8 +156,7 @@ const data = await response.json();
 
 Retrieve full details for a single deposit, including sender and receiver information.
 
-<ParamField query="id" type="string" required>Deposit UUID</ParamField>
-<ParamField query="status" type="string" optional>Filter by status</ParamField>
+ 
 
 ### Request
 
@@ -287,7 +278,7 @@ const data = await response.json();
 ## Deposit Detail Schema
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `id` | `string` | Deposit UUID |
 | `customerId` | `string` | Customer identifier |
 | `type` | `string` | `CRYPTO` or `FIAT` |
@@ -320,8 +311,7 @@ const data = await response.json();
 
 Upload a supporting document for a deposit. Use this for compliance or dispute cases.
 
-<ParamField body="depositId" type="string" required>Deposit UUID</ParamField>
-<ParamField body="file" type="file" required>Attachment file (PDF, image, or document)</ParamField>
+ 
 
 ### Request
 
