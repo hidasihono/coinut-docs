@@ -36,13 +36,6 @@ Choose Autoramp for faster time-to-market with individual users. Choose Omnibus 
 
 ## Architecture
 
-```text
-┌─────────────────────┐      ┌──────────────────────────┐      ┌─────────────────────────┐
-│     Partner App                  │───▶│   Coinut Partner Ramp                    │───▶│    Banking Network                     │
-│     (Your App)                   │◀───│           API                            │◀───│    + Blockchain                        │
-└─────────────────────┘      └──────────────────────────┘      └─────────────────────────┘
-```
-
 Your application sends signed HTTPS requests to the Coinut Partner Ramp API. We handle the complexity of banking integrations, blockchain transactions, compliance checks, and liquidity management. You receive webhook notifications for every state change.
 
 ## Licensing & Compliance
