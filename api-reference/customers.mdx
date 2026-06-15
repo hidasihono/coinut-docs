@@ -10,16 +10,16 @@ Customers represent end users who deposit or withdraw through your integration. 
 ### Customer Statuses
 
 | Status | Description |
-|--------|-------------|
-| `PENDING`  | Created, awaiting KYC document submission |
+| --- | --- |
+| `PENDING` | Created, awaiting KYC document submission |
 | `APPROVED` | KYC approved — eligible for transactions |
 | `REJECTED` | KYC rejected — cannot transact |
-| `DELETED`  | Soft-deleted — no longer active |
+| `DELETED` | Soft-deleted — no longer active |
 
 ### Customer Types
 
 | Type | Description |
-|------|-------------|
+| --- | --- |
 | `DEPOSITOR` | Customer who deposits crypto (onramp) |
 | `PAYEE` | Customer who receives fiat payouts (offramp) |
 
@@ -47,15 +47,15 @@ Create a new customer record and initiate the KYC flow.
   Customer type. Enum: `DEPOSITOR`, `PAYEE`.
 </ParamField>
 
-<ParamField body="isIndividual" type="boolean" optional>
+<ParamField body="isIndividual" type="boolean">
   `true` for individual, `false` for business entity.
 </ParamField>
 
-<ParamField body="sumsubShareToken" type="string" optional>
+<ParamField body="sumsubShareToken" type="string">
   Pre-existing Sumsub share token. If omitted, a new KYC session is created.
 </ParamField>
 
-<ParamField body="externalId" type="string" optional>
+<ParamField body="externalId" type="string">
   Your system's unique identifier for this customer. Use this to link Coinut records with your internal database.
 </ParamField>
 
@@ -74,6 +74,7 @@ Create a new customer record and initiate the KYC flow.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/customer/create" \
   -H "Content-Type: application/json" \
@@ -123,6 +124,7 @@ authedRequest('POST', '/customer/create', {
   externalId: 'partner-customer-001'
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -219,6 +221,7 @@ Retrieve a single customer's full profile.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/customer/detail?id=550e8400-e29b-41d4-a716-446655440000" \
   -H "Content-Type: application/json" \
@@ -239,6 +242,7 @@ print(authed_request('GET', '/customer/detail', {"id": "550e8400-e29b-41d4-a716-
 ```typescript TypeScript
 authedRequest('GET', '/customer/detail?id=550e8400-e29b-41d4-a716-446655440000').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -272,11 +276,11 @@ List all customers under your partner account with pagination and filtering.
 
 ### Query Parameters
 
-<ParamField query="pageNum" type="integer" default="1">
+<ParamField query="pageNum" default="1" type="integer">
   Page number (1-based).
 </ParamField>
 
-<ParamField query="pageSize" type="integer" default="10">
+<ParamField query="pageSize" default="10" type="integer">
   Items per page. Maximum: 100.
 </ParamField>
 
@@ -311,6 +315,7 @@ List all customers under your partner account with pagination and filtering.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/customer/list?pageNum=1&pageSize=10&status=APPROVED" \
   -H "Content-Type: application/json" \
@@ -335,6 +340,7 @@ print(authed_request('GET', '/customer/list', {
 ```typescript TypeScript
 authedRequest('GET', '/customer/list?pageNum=1&pageSize=10&status=APPROVED').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response

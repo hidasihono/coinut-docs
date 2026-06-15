@@ -16,7 +16,7 @@ Onramp lets your customers convert fiat currency (AUD, EUR, GBP) into cryptocurr
 
 ## Architecture
 
-```
+```text
 Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detection -> Trade -> Crypto Transfer
 ```
 
@@ -38,13 +38,11 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     Store the returned `customerId`. The customer receives a KYC link via email to complete identity verification.
   </Step>
-
   <Step title="Wait for KYC Approval">
     Listen for the `CUSTOMER_APPROVED` webhook event. You can also poll `GET /customer/detail` to check status.
 
     Customer status transitions: `CREATED` → `PENDING` → `APPROVED` | `REJECTED`
   </Step>
-
   <Step title="Create Virtual Account">
     Call `POST /virtual-account/create` with `customerId` and currency (`AUD`, `EUR`, `GBP`).
 
@@ -52,9 +50,9 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     Store all returned VA banking details (PayID, BSB, account number, IBAN, etc.).
   </Step>
-
   <Step title="Add Crypto Address">
     Call `POST /crypto-address/add` with:
+
     - `customerId`
     - `currency="USDT"`
     - `address` — the customer's wallet address
@@ -63,7 +61,6 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     Store the returned crypto address ID. You'll need it for the autoramp flow.
   </Step>
-
   <Step title="Create Autoramp Flow">
     Call `POST /autoramp-flow/onramp` with the fiat source and crypto destination:
 
@@ -79,86 +76,69 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     This links the virtual account deposits to automatic crypto conversion.
   </Step>
-
   <Step title="Display VA to Customer">
     Show the virtual account details in your UI:
 
-    - **AUD**: Display PayID (e.g., `john.doe@example.com`) and BSB + Account Number
+    - **AUD**: Display PayID (e.g., `john.doe@example.com`) and BSB \+ Account Number
     - **EUR**: Display IBAN and SWIFT/BIC
     - **GBP**: Display IBAN and Sort Code
 
     Generate a QR code for PayID to simplify mobile banking transfers.
   </Step>
-
   <Step title="Monitor Deposits">
     Listen for webhooks:
+
     - `DEPOSIT_RECEIVED` — funds detected
     - `DEPOSIT_APPROVED` — funds cleared
 
     Or poll `GET /deposit/list` with the customer ID.
   </Step>
-
   <Step title="Track Trade">
     After deposit approval, listen for:
+
     - `TRADE_CREATED` — trade initiated
     - `TRADE_SETTLED` — trade complete, crypto sent
 
     Or poll `GET /trade/list`.
   </Step>
-
   <Step title="Confirm Settlement">
     The `TRADE_SETTLED` webhook includes `txHash`. Use it to verify the crypto transaction on-chain:
 
-    - ERC-20: https://etherscan.io/tx/{txHash}
-    - TRC-20: https://tronscan.org/#/transaction/{txHash}
+    - ERC-20: [https://etherscan.io/tx/{txHash}](https://etherscan.io/tx/{txHash})
+    - TRC-20: [https://tronscan.org/#/transaction/{txHash}](https://tronscan.org/#/transaction/{txHash})
   </Step>
 </Steps>
 
 ## Complete Code Example
 
 <CodeGroup>
+
 ```javascript Node.js
 const axios = require('axios');
 const crypto = require('crypto');
 
-const BASE_URL = 'https://ramp.hexarails.ai';
+const BASE_URL = 'https://partner.coinut.net/api';
 const API_KEY = process.env.COINUT_API_KEY;
 const API_SECRET = process.env.COINUT_API_SECRET;
 
 // ── Authentication Helper ─────────────────────────────
-function createSignature(method, path, body = {}) {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = crypto.randomUUID();
-  const host = new URL(BASE_URL).host;
-  const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body);
-  const bodyHash = requestBody
-    ? crypto.createHash('sha256').update(requestBody).digest('hex')
-    : '';
-  const canonical = [
-    method.toUpperCase(),
-    host,
-    path,
-    '',
-    bodyHash,
-    timestamp,
-    nonce,
-  ].join('\n');
-  const signature = crypto.createHmac('sha256', API_SECRET).update(canonical).digest('hex');
-  return { timestamp, nonce, signature };
+function createSignature(nonce, method, path, body = '') {
+  const payload = `${nonce}${method.toUpperCase()}${path}${JSON.stringify(body)}`;
+  return crypto.createHmac('sha256', API_SECRET).update(payload).digest('hex');
 }
 
 async function coinutRequest(method, path, body = {}) {
-  const { timestamp, nonce, signature } = createSignature(method, path, body);
+  const nonce = Date.now().toString();
+  const signature = createSignature(nonce, method, path, body);
 
   return axios({
     method,
     url: `${BASE_URL}${path}`,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_KEY,
-      'X-Timestamp': timestamp,
-      'X-Nonce': nonce,
-      'X-Signature': signature,
+      'X-COINUT-PARTNER-APIKEY': API_KEY,
+      'X-COINUT-PARTNER-NONCE': nonce,
+      'X-COINUT-PARTNER-SIGNATURE': signature,
     },
     data: body,
   });
@@ -291,36 +271,29 @@ import json
 import hmac
 import hashlib
 import time
-import uuid
 import requests
 
-BASE_URL = "https://ramp.hexarails.ai"
+BASE_URL = "https://partner.coinut.net/api"
 API_KEY = os.environ["COINUT_API_KEY"]
 API_SECRET = os.environ["COINUT_API_SECRET"]
 
 
-def create_signature(method: str, path: str, body: dict = None):
-    timestamp = str(int(time.time()))
-    nonce = str(uuid.uuid4())
-    host = "ramp.hexarails.ai"
-    request_body = "" if method.upper() == "GET" else json.dumps(body or {}, separators=(",", ":"))
-    body_hash = hashlib.sha256(request_body.encode()).hexdigest() if request_body else ""
-    payload = "\n".join([method.upper(), host, path, "", body_hash, timestamp, nonce])
-    signature = hmac.new(
+def create_signature(nonce: str, method: str, path: str, body: dict = None) -> str:
+    payload = f"{nonce}{method.upper()}{path}{json.dumps(body) if body else ''}"
+    return hmac.new(
         API_SECRET.encode(), payload.encode(), hashlib.sha256
     ).hexdigest()
-    return timestamp, nonce, signature
 
 
 def coinut_request(method: str, path: str, body: dict = None):
-    timestamp, nonce, signature = create_signature(method, path, body)
+    nonce = str(int(time.time() * 1000))
+    signature = create_signature(nonce, method, path, body)
 
     headers = {
         "Content-Type": "application/json",
-        "X-API-Key": API_KEY,
-        "X-Timestamp": timestamp,
-        "X-Nonce": nonce,
-        "X-Signature": signature,
+        "X-COINUT-PARTNER-APIKEY": API_KEY,
+        "X-COINUT-PARTNER-NONCE": nonce,
+        "X-COINUT-PARTNER-SIGNATURE": signature,
     }
 
     resp = requests.request(method, f"{BASE_URL}{path}", json=body, headers=headers)
@@ -381,33 +354,18 @@ def execute_onramp(user: dict):
 import axios, { AxiosRequestConfig } from 'axios';
 import * as crypto from 'crypto';
 
-const BASE_URL = 'https://ramp.hexarails.ai';
+const BASE_URL = 'https://partner.coinut.net/api';
 const API_KEY = process.env.COINUT_API_KEY!;
 const API_SECRET = process.env.COINUT_API_SECRET!;
 
 function createSignature(
+  nonce: string,
   method: string,
   path: string,
   body?: object
-): { timestamp: string; nonce: string; signature: string } {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const nonce = crypto.randomUUID();
-  const host = new URL(BASE_URL).host;
-  const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body ?? {});
-  const bodyHash = requestBody
-    ? crypto.createHash('sha256').update(requestBody).digest('hex')
-    : '';
-  const payload = [
-    method.toUpperCase(),
-    host,
-    path,
-    '',
-    bodyHash,
-    timestamp,
-    nonce,
-  ].join('\n');
-  const signature = crypto.createHmac('sha256', API_SECRET).update(payload).digest('hex');
-  return { timestamp, nonce, signature };
+): string {
+  const payload = `${nonce}${method.toUpperCase()}${path}${body ? JSON.stringify(body) : ''}`;
+  return crypto.createHmac('sha256', API_SECRET).update(payload).digest('hex');
 }
 
 async function coinutRequest<T>(
@@ -415,17 +373,17 @@ async function coinutRequest<T>(
   path: string,
   body?: object
 ): Promise<T> {
-  const { timestamp, nonce, signature } = createSignature(method, path, body);
+  const nonce = Date.now().toString();
+  const signature = createSignature(nonce, method, path, body);
 
   const config: AxiosRequestConfig = {
     method,
     url: `${BASE_URL}${path}`,
     headers: {
       'Content-Type': 'application/json',
-      'X-API-Key': API_KEY,
-      'X-Timestamp': timestamp,
-      'X-Nonce': nonce,
-      'X-Signature': signature,
+      'X-COINUT-PARTNER-APIKEY': API_KEY,
+      'X-COINUT-PARTNER-NONCE': nonce,
+      'X-COINUT-PARTNER-SIGNATURE': signature,
     },
     data: body,
   };
@@ -496,12 +454,11 @@ export async function executeOnramp(
 
 ```bash cURL
 # Step 1: Create Customer
-curl -X POST https://ramp.hexarails.ai/customer/create \
+curl -X POST https://partner.coinut.net/api/customer/create \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Timestamp: $(date +%s)" \
-  -H "X-Nonce: $(date +%s%3N)" \
-  -H "X-Signature: $SIGNATURE" \
+  -H "X-COINUT-PARTNER-APIKEY: $API_KEY" \
+  -H "X-COINUT-PARTNER-NONCE: $(date +%s%3N)" \
+  -H "X-COINUT-PARTNER-SIGNATURE: $SIGNATURE" \
   -d '{
     "name": "John Doe",
     "email": "john@example.com",
@@ -511,24 +468,22 @@ curl -X POST https://ramp.hexarails.ai/customer/create \
   }'
 
 # Step 3: Create Virtual Account
-curl -X POST https://ramp.hexarails.ai/virtual-account/create \
+curl -X POST https://partner.coinut.net/api/virtual-account/create \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Timestamp: $(date +%s)" \
-  -H "X-Nonce: $(date +%s%3N)" \
-  -H "X-Signature: $SIGNATURE" \
+  -H "X-COINUT-PARTNER-APIKEY: $API_KEY" \
+  -H "X-COINUT-PARTNER-NONCE: $(date +%s%3N)" \
+  -H "X-COINUT-PARTNER-SIGNATURE: $SIGNATURE" \
   -d '{
     "customerId": "cust_abc123",
     "currency": "AUD"
   }'
 
 # Step 4: Add Crypto Address
-curl -X POST https://ramp.hexarails.ai/crypto-address/add \
+curl -X POST https://partner.coinut.net/api/crypto-address/add \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Timestamp: $(date +%s)" \
-  -H "X-Nonce: $(date +%s%3N)" \
-  -H "X-Signature: $SIGNATURE" \
+  -H "X-COINUT-PARTNER-APIKEY: $API_KEY" \
+  -H "X-COINUT-PARTNER-NONCE: $(date +%s%3N)" \
+  -H "X-COINUT-PARTNER-SIGNATURE: $SIGNATURE" \
   -d '{
     "customerId": "cust_abc123",
     "currency": "USDT",
@@ -538,12 +493,11 @@ curl -X POST https://ramp.hexarails.ai/crypto-address/add \
   }'
 
 # Step 5: Create Onramp Flow
-curl -X POST https://ramp.hexarails.ai/autoramp-flow/onramp \
+curl -X POST https://partner.coinut.net/api/autoramp-flow/onramp \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Timestamp: $(date +%s)" \
-  -H "X-Nonce: $(date +%s%3N)" \
-  -H "X-Signature: $SIGNATURE" \
+  -H "X-COINUT-PARTNER-APIKEY: $API_KEY" \
+  -H "X-COINUT-PARTNER-NONCE: $(date +%s%3N)" \
+  -H "X-COINUT-PARTNER-SIGNATURE: $SIGNATURE" \
   -d '{
     "from": {
       "customerId": "cust_abc123",
@@ -552,6 +506,7 @@ curl -X POST https://ramp.hexarails.ai/autoramp-flow/onramp \
     "to": "crypto_addr_id_xyz789"
   }'
 ```
+
 </CodeGroup>
 
 <Tip>
@@ -562,30 +517,13 @@ curl -X POST https://ramp.hexarails.ai/autoramp-flow/onramp \
   Never store API secrets in client-side code or mobile apps. Always route requests through your backend server.
 </Warning>
 
-## Testing in Sandbox
-
-| Environment | Base URL |
-|-------------|----------|
-| Production | `https://ramp.hexarails.ai` |
-| Sandbox | `https://ramp-sandbox.hexarails.ai` |
-
-Use small amounts for testing (e.g., 10-50 AUD equivalent). Set up webhook testing with a local tunnel:
-
-```bash
-# Expose local webhook handler to the internet
-npx ngrok http 3000
-
-# Use the HTTPS URL as your webhook endpoint in the Partner Dashboard
-# Example: https://abc123.ngrok.io/webhooks/coinut
-```
-
 ## Go-Live Checklist
 
-- [ ] KYC flow tested end-to-end
-- [ ] All webhook events handled (`CUSTOMER_APPROVED`, `DEPOSIT_RECEIVED`, `DEPOSIT_APPROVED`, `TRADE_SETTLED`)
-- [ ] Error handling implemented for API failures and timeouts
-- [ ] Retry logic with exponential backoff for idempotent requests
-- [ ] Monitoring dashboards set up for deposit and trade volumes
-- [ ] IP whitelist configured in Partner Dashboard
-- [ ] Webhook signature verification implemented
-- [ ] Sandbox testing completed with multiple currencies
+- KYC flow tested end-to-end
+- All webhook events handled (`CUSTOMER_APPROVED`, `DEPOSIT_RECEIVED`, `DEPOSIT_APPROVED`, `TRADE_SETTLED`)
+- Error handling implemented for API failures and timeouts
+- Retry logic with exponential backoff for idempotent requests
+- Monitoring dashboards set up for deposit and trade volumes
+- IP whitelist configured in Partner Dashboard
+- Webhook signature verification implemented
+- Sandbox testing completed with multiple currencies

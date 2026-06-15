@@ -5,18 +5,12 @@ description: "Make fiat payments directly from your partner balance."
 
 ## Payment Workflow
 
-<Steps>
-  <Step title="Estimate">Call `GET /payment/estimate` to preview the rate, fees, and deducted amount before creating a payment.</Step>
-  <Step title="Create">Call `POST /payment/create` with the payment details. Optionally attach a supporting document.</Step>
-  <Step title="Track">Poll `GET /payment/detail` or wait for webhook notifications to monitor status.</Step>
-</Steps>
-
 ---
 
 ## Payment Statuses
 
 | Status | Description |
-|--------|-------------|
+| --- | --- |
 | `PROCESSING` | Payment is being processed |
 | `CONFIRMED` | Payment completed successfully |
 
@@ -26,21 +20,17 @@ description: "Make fiat payments directly from your partner balance."
 
 Preview the exchange rate and fees before creating a payment.
 
-<ParamField query="deductCurrency" type="string" required>Currency to deduct from partner balance (e.g. USDT)</ParamField>
-<ParamField query="amount" type="string" required>Payment amount in target currency</ParamField>
-<ParamField query="currency" type="string" required>Target fiat currency (e.g. USD)</ParamField>
-<ParamField query="bankAccountId" type="string" required>Recipient bank account UUID</ParamField>
+   
 
 ### Request
 
 <CodeGroup>
 
 ```bash
-curl -X GET "https://ramp.hexarails.ai/payment/estimate?deductCurrency=USDT&amount=100&currency=USD&bankAccountId=ba-550e8400" \
-  -H "X-API-Key: your_api_key" \
-  -H "X-Timestamp: 1710825600" \
-  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
-  -H "X-Signature: your_signature"
+curl -X GET "https://partner.coinut.net/api/payment/estimate?deductCurrency=USDT&amount=100&currency=USD&bankAccountId=ba-550e8400" \
+  -H "X-COINUT-PARTNER-APIKEY: your_api_key" \
+  -H "X-COINUT-PARTNER-NONCE: 1710825600000" \
+  -H "X-COINUT-PARTNER-SIGNATURE: your_signature"
 ```
 
 ```javascript
@@ -51,13 +41,12 @@ const params = new URLSearchParams({
   bankAccountId: "ba-550e8400",
 });
 
-const response = await fetch(`https://ramp.hexarails.ai/payment/estimate?${params}`, {
+const response = await fetch(`https://partner.coinut.net/api/payment/estimate?${params}`, {
   method: "GET",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
   },
 });
 
@@ -68,10 +57,9 @@ const data = await response.json();
 import requests
 
 headers = {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
 }
 
 params = {
@@ -82,7 +70,7 @@ params = {
 }
 
 response = requests.get(
-    "https://ramp.hexarails.ai/payment/estimate",
+    "https://partner.coinut.net/api/payment/estimate",
     headers=headers,
     params=params,
 )
@@ -97,13 +85,12 @@ const params = new URLSearchParams({
   bankAccountId: "ba-550e8400",
 });
 
-const response = await fetch(`https://ramp.hexarails.ai/payment/estimate?${params}`, {
+const response = await fetch(`https://partner.coinut.net/api/payment/estimate?${params}`, {
   method: "GET",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
   },
 });
 
@@ -142,53 +129,46 @@ Initiate a fiat payment from your partner balance.
 </Warning>
 
 <Note>
-  The latest contract defines this endpoint as `multipart/form-data`. The `supportingDocument` field is optional.
-  Attach an invoice, purchase order, or compliance document when required.
+  The `supportingDocument` field is optional. Attach an invoice, purchase order, or compliance document when required.
 </Note>
 
-<ParamField body="deductCurrency" type="string" required>Currency to deduct (e.g. USDT)</ParamField>
-<ParamField body="amount" type="string" required>Payment amount in target currency</ParamField>
-<ParamField body="currency" type="string" required>Target fiat currency (e.g. USD)</ParamField>
-<ParamField body="bankAccountId" type="string" required>Recipient bank account UUID</ParamField>
-<ParamField body="reference" type="string" required>Payment reference for reconciliation</ParamField>
-<ParamField body="supportingDocument" type="file" optional>Attachment file (PDF, image, or document)</ParamField>
+     
 
 ### Request
 
 <CodeGroup>
 
 ```bash
-curl -X POST "https://ramp.hexarails.ai/payment/create" \
-  -H "X-API-Key: your_api_key" \
-  -H "X-Timestamp: 1710825600" \
-  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
-  -H "X-Signature: your_signature" \
-  -F "deductCurrency=USDT" \
-  -F "amount=100" \
-  -F "currency=USD" \
-  -F "bankAccountId=d33cb6ae-cc67-40e7-b92d-babb255f1774" \
-  -F "reference=payment-123456" \
-  -F "supportingDocument=@/path/to/invoice.pdf"
+curl -X POST "https://partner.coinut.net/api/payment/create" \
+  -H "X-COINUT-PARTNER-APIKEY: your_api_key" \
+  -H "X-COINUT-PARTNER-NONCE: 1710825600000" \
+  -H "X-COINUT-PARTNER-SIGNATURE: your_signature" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deductCurrency": "USDT",
+    "amount": "100",
+    "currency": "USD",
+    "bankAccountId": "ba-550e8400",
+    "reference": "payment-123456"
+  }'
 ```
 
 ```javascript
-const formData = new FormData();
-formData.append("deductCurrency", "USDT");
-formData.append("amount", "100");
-formData.append("currency", "USD");
-formData.append("bankAccountId", "d33cb6ae-cc67-40e7-b92d-babb255f1774");
-formData.append("reference", "payment-123456");
-formData.append("supportingDocument", fileInput.files[0]);
-
-const response = await fetch("https://ramp.hexarails.ai/payment/create", {
+const response = await fetch("https://partner.coinut.net/api/payment/create", {
   method: "POST",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
+    "Content-Type": "application/json",
   },
-  body: formData,
+  body: JSON.stringify({
+    deductCurrency: "USDT",
+    amount: "100",
+    currency: "USD",
+    bankAccountId: "ba-550e8400",
+    reference: "payment-123456",
+  }),
 });
 
 const data = await response.json();
@@ -198,45 +178,44 @@ const data = await response.json();
 import requests
 
 headers = {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
+    "Content-Type": "application/json",
+}
+
+payload = {
+    "deductCurrency": "USDT",
+    "amount": "100",
+    "currency": "USD",
+    "bankAccountId": "ba-550e8400",
+    "reference": "payment-123456",
 }
 
 response = requests.post(
-    "https://ramp.hexarails.ai/payment/create",
+    "https://partner.coinut.net/api/payment/create",
     headers=headers,
-    data={
-        "deductCurrency": "USDT",
-        "amount": "100",
-        "currency": "USD",
-        "bankAccountId": "d33cb6ae-cc67-40e7-b92d-babb255f1774",
-        "reference": "payment-123456",
-    },
-    files={"supportingDocument": open("/path/to/invoice.pdf", "rb")},
+    json=payload,
 )
 data = response.json()
 ```
 
 ```typescript
-const formData = new FormData();
-formData.append("deductCurrency", "USDT");
-formData.append("amount", "100");
-formData.append("currency", "USD");
-formData.append("bankAccountId", "d33cb6ae-cc67-40e7-b92d-babb255f1774");
-formData.append("reference", "payment-123456");
-formData.append("supportingDocument", fileBlob);
-
-const response = await fetch("https://ramp.hexarails.ai/payment/create", {
+const response = await fetch("https://partner.coinut.net/api/payment/create", {
   method: "POST",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
+    "Content-Type": "application/json",
   },
-  body: formData,
+  body: JSON.stringify({
+    deductCurrency: "USDT",
+    amount: "100",
+    currency: "USD",
+    bankAccountId: "ba-550e8400",
+    reference: "payment-123456",
+  }),
 });
 
 const data = await response.json();
@@ -277,18 +256,15 @@ const data = await response.json();
 
 Retrieve full details for a single payment.
 
-<ParamField query="id" type="string" required>Payment UUID</ParamField>
-
 ### Request
 
 <CodeGroup>
 
 ```bash
-curl -X GET "https://ramp.hexarails.ai/payment/detail?id=770e8400-e29b-41d4-a716-446655440002" \
-  -H "X-API-Key: your_api_key" \
-  -H "X-Timestamp: 1710825600" \
-  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
-  -H "X-Signature: your_signature"
+curl -X GET "https://partner.coinut.net/api/payment/detail?id=770e8400-e29b-41d4-a716-446655440002" \
+  -H "X-COINUT-PARTNER-APIKEY: your_api_key" \
+  -H "X-COINUT-PARTNER-NONCE: 1710825600000" \
+  -H "X-COINUT-PARTNER-SIGNATURE: your_signature"
 ```
 
 ```javascript
@@ -296,13 +272,12 @@ const params = new URLSearchParams({
   id: "770e8400-e29b-41d4-a716-446655440002",
 });
 
-const response = await fetch(`https://ramp.hexarails.ai/payment/detail?${params}`, {
+const response = await fetch(`https://partner.coinut.net/api/payment/detail?${params}`, {
   method: "GET",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
   },
 });
 
@@ -313,10 +288,9 @@ const data = await response.json();
 import requests
 
 headers = {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
 }
 
 params = {
@@ -324,7 +298,7 @@ params = {
 }
 
 response = requests.get(
-    "https://ramp.hexarails.ai/payment/detail",
+    "https://partner.coinut.net/api/payment/detail",
     headers=headers,
     params=params,
 )
@@ -336,13 +310,12 @@ const params = new URLSearchParams({
   id: "770e8400-e29b-41d4-a716-446655440002",
 });
 
-const response = await fetch(`https://ramp.hexarails.ai/payment/detail?${params}`, {
+const response = await fetch(`https://partner.coinut.net/api/payment/detail?${params}`, {
   method: "GET",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
   },
 });
 
@@ -386,33 +359,28 @@ const data = await response.json();
 
 Retrieve a paginated list of payments.
 
-<ParamField query="pageNum" type="number" default="1">Page number</ParamField>
-<ParamField query="pageSize" type="number" default="10">Items per page</ParamField>
-<ParamField query="status" type="string" optional>Filter by status: `PROCESSING`, `CONFIRMED`</ParamField>
-<ParamField query="currency" type="string" optional>Filter by received currency</ParamField>
+   
 
 ### Request
 
 <CodeGroup>
 
 ```bash
-curl -X GET "https://ramp.hexarails.ai/payment/list?pageNum=1&pageSize=10&status=CONFIRMED" \
-  -H "X-API-Key: your_api_key" \
-  -H "X-Timestamp: 1710825600" \
-  -H "X-Nonce: 550e8400-e29b-41d4-a716-446655440000" \
-  -H "X-Signature: your_signature"
+curl -X GET "https://partner.coinut.net/api/payment/list?pageNum=1&pageSize=10&status=CONFIRMED" \
+  -H "X-COINUT-PARTNER-APIKEY: your_api_key" \
+  -H "X-COINUT-PARTNER-NONCE: 1710825600000" \
+  -H "X-COINUT-PARTNER-SIGNATURE: your_signature"
 ```
 
 ```javascript
 const params = new URLSearchParams({ pageNum: "1", pageSize: "10", status: "CONFIRMED" });
 
-const response = await fetch(`https://ramp.hexarails.ai/payment/list?${params}`, {
+const response = await fetch(`https://partner.coinut.net/api/payment/list?${params}`, {
   method: "GET",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
   },
 });
 
@@ -423,10 +391,9 @@ const data = await response.json();
 import requests
 
 headers = {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
 }
 
 params = {
@@ -436,7 +403,7 @@ params = {
 }
 
 response = requests.get(
-    "https://ramp.hexarails.ai/payment/list",
+    "https://partner.coinut.net/api/payment/list",
     headers=headers,
     params=params,
 )
@@ -446,13 +413,12 @@ data = response.json()
 ```typescript
 const params = new URLSearchParams({ pageNum: "1", pageSize: "10", status: "CONFIRMED" });
 
-const response = await fetch(`https://ramp.hexarails.ai/payment/list?${params}`, {
+const response = await fetch(`https://partner.coinut.net/api/payment/list?${params}`, {
   method: "GET",
   headers: {
-    "X-API-Key": "your_api_key",
-    "X-Timestamp": "1710825600",
-    "X-Nonce": "550e8400-e29b-41d4-a716-446655440000",
-    "X-Signature": "your_signature",
+    "X-COINUT-PARTNER-APIKEY": "your_api_key",
+    "X-COINUT-PARTNER-NONCE": "1710825600000",
+    "X-COINUT-PARTNER-SIGNATURE": "your_signature",
   },
 });
 
@@ -504,7 +470,7 @@ const data = await response.json();
 ### GetPaymentDetailDataDto
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `id` | `string` | Payment UUID |
 | `status` | `string` | `PROCESSING` or `CONFIRMED` |
 | `rate` | `string` | Exchange rate applied |
@@ -520,7 +486,7 @@ const data = await response.json();
 ### PaymentDetailBankAccountDto
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `bankName` | `string` | Bank name |
 | `accountNo` | `string` | Account number |
 | `bankCountry` | `string` | Bank country code |

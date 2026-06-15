@@ -10,18 +10,18 @@ Virtual accounts are fiat-denominated receiving accounts assigned to a customer.
 ### Statuses
 
 | Status | Description |
-|--------|-------------|
-| `PENDING`  | Created, awaiting bank verification |
+| --- | --- |
+| `PENDING` | Created, awaiting bank verification |
 | `VERIFIED` | Active and ready to receive funds |
 
 ### Schema
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `id` | string | Virtual account ID (prefixed `va_`) |
 | `customerName` | string | Name of the associated customer |
 | `currency` | string | Fiat currency code |
-| `accountNumber`| string | Bank account number |
+| `accountNumber` | string | Bank account number |
 | `bicSwift` | string | BIC/SWIFT code (EUR/GBP) or BSB (AUD) |
 | `payId` | string | Australian PayID (AUD only) |
 | `iban` | string | IBAN (EUR/GBP only) |
@@ -33,10 +33,10 @@ Virtual accounts are fiat-denominated receiving accounts assigned to a customer.
 ### Currency-Specific Fields
 
 | Currency | Receiving Methods | Key Fields |
-|----------|-------------------|------------|
-| **AUD** | BSB + Account Number, PayID | `accountNumber`, `bicSwift` (BSB), `payId` |
-| **EUR** | IBAN + SWIFT | `accountNumber`, `bicSwift`, `iban` |
-| **GBP** | IBAN + SWIFT | `accountNumber`, `bicSwift`, `iban` |
+| --- | --- | --- |
+| **AUD** | BSB \+ Account Number, PayID | `accountNumber`, `bicSwift` (BSB), `payId` |
+| **EUR** | IBAN \+ SWIFT | `accountNumber`, `bicSwift`, `iban` |
+| **GBP** | IBAN \+ SWIFT | `accountNumber`, `bicSwift`, `iban` |
 
 <Note>
   Whitelist functionality is **AUD only**. EUR and GBP virtual accounts do not support source-account whitelisting.
@@ -58,7 +58,7 @@ Create a new fiat virtual account for a customer.
   Fiat currency. Enum: `GBP`, `EUR`, `AUD`.
 </ParamField>
 
-<ParamField body="whitelist" type="object" optional>
+<ParamField body="whitelist" type="object">
   Initial whitelist entry for AUD accounts. See below for shape.
 </ParamField>
 
@@ -123,6 +123,7 @@ Create a new fiat virtual account for a customer.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/virtual-account/create" \
   -H "Content-Type: application/json" \
@@ -176,6 +177,7 @@ authedRequest('POST', '/virtual-account/create', {
   }
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -209,11 +211,11 @@ List virtual accounts with pagination and filters.
 
 ### Query Parameters
 
-<ParamField query="pageNum" type="integer" default="1">
+<ParamField query="pageNum" default="1" type="integer">
   Page number (1-based).
 </ParamField>
 
-<ParamField query="pageSize" type="integer" default="10">
+<ParamField query="pageSize" default="10" type="integer">
   Items per page. Maximum: 100.
 </ParamField>
 
@@ -248,6 +250,7 @@ List virtual accounts with pagination and filters.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/virtual-account/list?pageNum=1&pageSize=10&currency=AUD" \
   -H "Content-Type: application/json" \
@@ -272,6 +275,7 @@ print(authed_request('GET', '/virtual-account/list', {
 ```typescript TypeScript
 authedRequest('GET', '/virtual-account/list?pageNum=1&pageSize=10&currency=AUD').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -317,6 +321,7 @@ Get detailed information for a single virtual account.
 Returns a full `VirtualAccountDetailDto` object including all fields from the list response plus any additional metadata.
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/virtual-account/detail?id=va_123" \
   -H "Content-Type: application/json" \
@@ -337,6 +342,7 @@ print(authed_request('GET', '/virtual-account/detail', {"id": "va_123"}))
 ```typescript TypeScript
 authedRequest('GET', '/virtual-account/detail?id=va_123').then(console.log);
 ```
+
 </CodeGroup>
 
 ---
@@ -368,6 +374,7 @@ Add a new source account to the AUD whitelist. Only funds from whitelisted accou
 </ParamField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/virtual-account/create-aud-whitelist" \
   -H "Content-Type: application/json" \
@@ -417,6 +424,7 @@ authedRequest('POST', '/virtual-account/create-aud-whitelist', {
   }
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -469,6 +477,7 @@ Update an existing whitelist entry.
 </ParamField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/virtual-account/update-aud-whitelist" \
   -H "Content-Type: application/json" \
@@ -526,6 +535,7 @@ authedRequest('POST', '/virtual-account/update-aud-whitelist', {
   }
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -576,6 +586,7 @@ Retrieve all whitelisted source accounts for a virtual account.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/virtual-account/get-aud-whitelist?id=va_123" \
   -H "Content-Type: application/json" \
@@ -596,6 +607,7 @@ print(authed_request('GET', '/virtual-account/get-aud-whitelist', {"id": "va_123
 ```typescript TypeScript
 authedRequest('GET', '/virtual-account/get-aud-whitelist?id=va_123').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
