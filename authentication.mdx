@@ -11,77 +11,46 @@ Every request to the Coinut Partner Ramp API must be cryptographically signed us
   Never expose your API Secret in client-side code, frontend applications, or public repositories. It must remain server-side only.
 </Warning>
 
+<Warning>
+  Never expose your API Secret in client-side code, frontend applications, or public repositories. It must remain server-side only.
+</Warning>
+
+<Warning>
+  Never expose your API Secret in client-side code, frontend applications, or public repositories. It must remain server-side only.
+</Warning>
+
 ## Required Headers
 
 Include these four headers in every authenticated request:
 
 | Header | Required | Description |
-|--------|----------|-------------|
+| --- | --- | --- |
 | `X-API-Key` | Yes | Your API key |
 | `X-Timestamp` | Yes | Unix timestamp in **seconds** (as string) |
 | `X-Nonce` | Yes | A unique random string per request (e.g., UUID) |
 | `X-Signature` | Yes | HMAC-SHA256 signature (lowercase hex string) |
 
 <Note>
-  The latest machine-readable contract also declares an `X-API-Secret` security scheme, but the
-  narrative signing instructions only require `X-API-Key`, `X-Timestamp`, `X-Nonce`, and `X-Signature`.
-  Confirm the expected header set in sandbox before production rollout.
+  The latest machine-readable contract also declares an `X-API-Secret` security scheme, but the narrative signing instructions only require `X-API-Key`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. Confirm the expected header set in sandbox before production rollout.
+</Note>
+
+<Note>
+  The latest machine-readable contract also declares an `X-API-Secret` security scheme, but the narrative signing instructions only require `X-API-Key`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. Confirm the expected header set in sandbox before production rollout.
+</Note>
+
+<Note>
+  The latest machine-readable contract also declares an `X-API-Secret` security scheme, but the narrative signing instructions only require `X-API-Key`, `X-Timestamp`, `X-Nonce`, and `X-Signature`. Confirm the expected header set in sandbox before production rollout.
 </Note>
 
 ## How to Generate the Signature
 
 <Steps>
+</Steps>
 
-### Step 1: Build the Canonical String
+<Steps>
+</Steps>
 
-The canonical string is built by joining 7 components with newline (`\n`) delimiters:
-
-```text
-METHOD
-
-HOST
-
-PATH
-
-QUERY
-
-BODY_SHA256_HEX
-
-TIMESTAMP
-
-NONCE
-```
-
-Where:
-
-| Component | Description | Example |
-|-----------|-------------|---------|
-| `METHOD` | Uppercase HTTP method | `GET`, `POST` |
-| `HOST` | Request host (without protocol) | `ramp.hexarails.ai` |
-| `PATH` | Request path (no query string) | `/balance` |
-| `QUERY` | Raw query string **without** leading `?` | `currency=USDT&network=TRX` |
-| `BODY_SHA256_HEX` | SHA-256 of JSON body (empty string for GET/multipart) | `e3b0c44298fc1c149afbf4c8996fb924...` |
-| `TIMESTAMP` | Same as `X-Timestamp` header | `1717900800` |
-| `NONCE` | Same as `X-Nonce` header | `550e8400-e29b-41d4-a716-446655440000` |
-
-<Note>
-  Query parameters are **not re-ordered** or normalized. Use them exactly as they appear in the URL.
-</Note>
-
-### Step 2: Compute SHA-256 of Body (if applicable)
-
-For **JSON requests**: Serialize the body to JSON string, then compute SHA-256 and encode as lowercase hex.
-
-For **GET requests** or **multipart/form-data**: Use an **empty string** for `BODY_SHA256_HEX`.
-
-### Step 3: Generate HMAC-SHA256 Signature
-
-Use your **API Secret** as the HMAC key and the canonical string as the message:
-
-```text
-X-Signature = HMAC_SHA256_HEX(apiSecret, canonicalString)
-```
-
+<Steps>
 </Steps>
 
 ## Signature Generation — Code Examples
@@ -351,7 +320,85 @@ curl https://ramp-sandbox.hexarails.ai/balance \
 ## Error Responses
 
 | Status Code | Meaning | Resolution |
-|------------|---------|-----------|
+| --- | --- | --- |
+| `422` | Invalid parameters, authentication failure, or failed operation | Verify the canonical string, headers, and request body |
+| `401` | Possible gateway or middleware authentication failure | Handle defensively even though the latest contract primarily documents `422` |
+
+## IP Whitelisting
+
+Restrict API access to your server IP addresses for additional security.
+
+### Get Current IP Whitelist
+
+### Response (New API — 200 OK)
+
+<ResponseField name="status" type="string">
+  Always `SUCCESS` for successful requests.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  List of balance objects, one per currency.
+</ResponseField>
+
+```json
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "balance": "1000.00",
+      "currency": "USD"
+    },
+    {
+      "balance": "25000.000000",
+      "currency": "USDT"
+    }
+  ]
+}
+```
+
+## Error Responses
+
+| Status Code | Meaning | Resolution |
+| --- | --- | --- |
+| `422` | Invalid parameters, authentication failure, or failed operation | Verify the canonical string, headers, and request body |
+| `401` | Possible gateway or middleware authentication failure | Handle defensively even though the latest contract primarily documents `422` |
+
+## IP Whitelisting
+
+Restrict API access to your server IP addresses for additional security.
+
+### Get Current IP Whitelist
+
+### Response (New API — 200 OK)
+
+<ResponseField name="status" type="string">
+  Always `SUCCESS` for successful requests.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  List of balance objects, one per currency.
+</ResponseField>
+
+```json
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "balance": "1000.00",
+      "currency": "USD"
+    },
+    {
+      "balance": "25000.000000",
+      "currency": "USDT"
+    }
+  ]
+}
+```
+
+## Error Responses
+
+| Status Code | Meaning | Resolution |
+| --- | --- | --- |
 | `422` | Invalid parameters, authentication failure, or failed operation | Verify the canonical string, headers, and request body |
 | `401` | Possible gateway or middleware authentication failure | Handle defensively even though the latest contract primarily documents `422` |
 
@@ -384,7 +431,7 @@ curl -X POST https://ramp-sandbox.hexarails.ai/ip-white-list \
 ```
 
 | Field | Required | Description |
-|-------|----------|-------------|
+| --- | --- | --- |
 | `ipWhiteList` | Yes | Array of IP addresses. Empty array `[]` means **no restriction**. |
 
 ## Best Practices
@@ -406,7 +453,7 @@ const nonce = "1234567890";  // never reuse hardcoded nonces
 The `X-Timestamp` must be a **Unix timestamp in seconds** (not milliseconds or microseconds).
 
 | Language | Expression | Output |
-|----------|-----------|--------|
+| --- | --- | --- |
 | JavaScript | `Math.floor(Date.now() / 1000)` | `1717900800` |
 | Python | `str(int(time.time()))` | `1717900800` |
 | Java | `String.valueOf(Instant.now().getEpochSecond())` | `1717900800` |
@@ -414,7 +461,7 @@ The `X-Timestamp` must be a **Unix timestamp in seconds** (not milliseconds or m
 ### Store Secrets Server-Side
 
 | Do | Don't |
-|----|-------|
+| --- | --- |
 | Store in environment variables (`process.env.API_SECRET`) | Hardcode in source files |
 | Use a secrets manager (AWS Secrets Manager, HashiCorp Vault) | Log to console or debug output |
 | Load at runtime from secure storage | Pass in URL query parameters |
@@ -433,8 +480,42 @@ The `X-Timestamp` must be a **Unix timestamp in seconds** (not milliseconds or m
 
 ## API Environments
 
+### Update IP Whitelist
+
+```bash
+curl -X POST https://ramp-sandbox.hexarails.ai/ip-white-list \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "ipWhiteList": ["115.236.134.118", "47.89.58.120"]
+  }'
+```
+
+## API Environments
+
 | Environment | Base URL | Use Case |
-|-------------|----------|----------|
+| --- | --- | --- |
+| **Sandbox** | `https://ramp-sandbox.hexarails.ai` | Development and testing |
+| **Production** | `https://ramp.hexarails.ai` | Live transactions |
+
+<Warning>
+  API keys are environment-specific. A sandbox key will not work in production.
+</Warning>
+
+| Environment | Base URL | Use Case |
+| --- | --- | --- |
+| **Sandbox** | `https://ramp-sandbox.hexarails.ai` | Development and testing |
+| **Production** | `https://ramp.hexarails.ai` | Live transactions |
+
+<Warning>
+  API keys are environment-specific. A sandbox key will not work in production.
+</Warning>
+
+| Environment | Base URL | Use Case |
+| --- | --- | --- |
 | **Sandbox** | `https://ramp-sandbox.hexarails.ai` | Development and testing |
 | **Production** | `https://ramp.hexarails.ai` | Live transactions |
 
