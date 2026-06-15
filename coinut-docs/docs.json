@@ -51,8 +51,7 @@
             "group": "Getting Started",
             "pages": [
               "quickstart",
-              "authentication",
-              "untitled-page"
+              "authentication"
             ]
           },
           {
@@ -126,9 +125,7 @@
           },
           {
             "group": "Deposits",
-            "pages": [
-              "api-reference/deposits"
-            ]
+            "pages": []
           },
           {
             "group": "Trades",
