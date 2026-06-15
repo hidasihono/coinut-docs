@@ -1,0 +1,511 @@
+---
+title: "Quickstart"
+description: "Get up and running with Coinut Partner Ramp APIs in under 10 minutes."
+---
+
+## Before You Begin
+
+You will need:
+
+- A Coinut partner account (register at [partner.coinut.com](https://partner.coinut.com))
+- Your **API Key** and **API Secret** from the partner dashboard
+- A server-side environment capable of making HTTPS requests
+- A webhook callback URL (HTTPS, publicly reachable)
+
+<Warning>
+  Store your API Secret in a secure vault or environment variable. Never commit it to version control or expose it in client-side code.
+</Warning>
+
+<Tip>
+  Use the **sandbox environment** for all development and testing: `https://ramp-sandbox.hexarails.ai`
+</Tip>
+
+---
+
+<Steps>
+
+### Step 1: Get Your Credentials
+
+Log in to the partner dashboard and navigate to **API Keys**.
+
+1. Click **Generate New Key Pair**
+2. Copy the **API Key** — identifies your partner account
+3. Copy the **API Secret** — shown only once, used for signing requests
+
+| Credential | Purpose |
+|-----------|---------|
+| API Key | Identifies your partner account in the `X-API-Key` header |
+| API Secret | Signs all requests via HMAC-SHA256 |
+
+### Step 2: Set Up Authentication
+
+Every request must include four headers:
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| `X-API-Key` | Yes | Your API key |
+| `X-Timestamp` | Yes | Unix timestamp in **seconds** (as string) |
+| `X-Nonce` | Yes | A unique random string per request (e.g., UUID) |
+| `X-Signature` | Yes | HMAC-SHA256 signature (lowercase hex string) |
+
+To generate the signature, build a **canonical string** with 7 components joined by newlines:
+
+```text
+METHOD
+
+HOST
+
+PATH
+
+QUERY
+
+BODY_SHA256_HEX
+
+TIMESTAMP
+
+NONCE
+```
+
+Then compute: `X-Signature = HMAC_SHA256_HEX(apiSecret, canonicalString)`
+
+<Note>
+  See the [Authentication](/authentication) page for complete signing examples in JavaScript, Java, and Python.
+</Note>
+
+### Step 3: Make Your First API Call
+
+Call the health check endpoint to verify connectivity. No authentication required.
+
+<CodeGroup>
+
+```bash curl
+curl https://ramp-sandbox.hexarails.ai/health
+```
+
+```javascript JavaScript
+fetch("https://ramp-sandbox.hexarails.ai/health")
+  .then(r => r.json())
+  .then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+r = requests.get("https://ramp-sandbox.hexarails.ai/health")
+print(r.json())
+```
+
+```typescript TypeScript
+const r = await fetch("https://ramp-sandbox.hexarails.ai/health");
+const data = await r.json();
+console.log(data);
+```
+
+</CodeGroup>
+
+**Expected response:**
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "status": "ok"
+  }
+}
+```
+
+### Step 4: Set Up Webhooks
+
+Webhooks deliver real-time event notifications to your server. First, update your callback URL, then subscribe to events.
+
+#### Update Callback URL
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://ramp-sandbox.hexarails.ai/callback-url \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "callbackUrl": "https://your-app.com/webhooks/coinut"
+  }'
+```
+
+```javascript JavaScript
+const body = {
+  callbackUrl: "https://your-app.com/webhooks/coinut"
+};
+
+const res = await fetch("https://ramp-sandbox.hexarails.ai/callback-url", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  },
+  body: JSON.stringify(body)
+});
+```
+
+```python Python
+import requests
+
+body = {
+    "callbackUrl": "https://your-app.com/webhooks/coinut"
+}
+
+res = requests.post(
+    "https://ramp-sandbox.hexarails.ai/callback-url",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature
+    },
+    json=body
+)
+print(res.json())
+```
+
+```typescript TypeScript
+const body = {
+  callbackUrl: "https://your-app.com/webhooks/coinut"
+};
+
+const res = await fetch("https://ramp-sandbox.hexarails.ai/callback-url", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  },
+  body: JSON.stringify(body)
+});
+const data = await res.json();
+```
+
+</CodeGroup>
+
+#### Subscribe to Events
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://ramp-sandbox.hexarails.ai/subscribed-events \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "events": [
+      "CUSTOMER_APPROVED",
+      "DEPOSIT_RECEIVED",
+      "DEPOSIT_APPROVED",
+      "TRADE_CREATED",
+      "TRADE_SETTLED",
+      "PAYMENT_SETTLED"
+    ]
+  }'
+```
+
+```javascript JavaScript
+const body = {
+  events: [
+    "CUSTOMER_APPROVED",
+    "DEPOSIT_RECEIVED",
+    "DEPOSIT_APPROVED",
+    "TRADE_CREATED",
+    "TRADE_SETTLED",
+    "PAYMENT_SETTLED"
+  ]
+};
+
+const res = await fetch("https://ramp-sandbox.hexarails.ai/subscribed-events", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  },
+  body: JSON.stringify(body)
+});
+```
+
+```python Python
+import requests
+
+body = {
+    "events": [
+        "CUSTOMER_APPROVED",
+        "DEPOSIT_RECEIVED",
+        "DEPOSIT_APPROVED",
+        "TRADE_CREATED",
+        "TRADE_SETTLED",
+        "PAYMENT_SETTLED"
+    ]
+}
+
+res = requests.post(
+    "https://ramp-sandbox.hexarails.ai/subscribed-events",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature
+    },
+    json=body
+)
+print(res.json())
+```
+
+```typescript TypeScript
+const body = {
+  events: [
+    "CUSTOMER_APPROVED",
+    "DEPOSIT_RECEIVED",
+    "DEPOSIT_APPROVED",
+    "TRADE_CREATED",
+    "TRADE_SETTLED",
+    "PAYMENT_SETTLED"
+  ]
+};
+
+const res = await fetch("https://ramp-sandbox.hexarails.ai/subscribed-events", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  },
+  body: JSON.stringify(body)
+});
+const data = await res.json();
+```
+
+</CodeGroup>
+
+<Note>
+  Your webhook endpoint must return a `200 OK` response quickly and process events idempotently.
+  The retry schedule is not defined in `rampdocs.json`, so confirm production retry behavior with Coinut
+  before you depend on a specific backoff pattern.
+</Note>
+
+### Step 5: Create Your First Customer
+
+Create a customer record before processing any transactions.
+
+<CodeGroup>
+
+```bash curl
+curl -X POST https://ramp-sandbox.hexarails.ai/customer/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "name": "Alice Smith",
+    "email": "alice@example.com",
+    "type": "DEPOSITOR",
+    "isIndividual": true
+  }'
+```
+
+```javascript JavaScript
+const body = {
+  name: "Alice Smith",
+  email: "alice@example.com",
+  type: "DEPOSITOR",
+  isIndividual: true
+};
+
+const res = await fetch("https://ramp-sandbox.hexarails.ai/customer/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  },
+  body: JSON.stringify(body)
+});
+
+const data = await res.json();
+console.log(data);
+```
+
+```python Python
+import requests
+
+body = {
+    "name": "Alice Smith",
+    "email": "alice@example.com",
+    "type": "DEPOSITOR",
+    "isIndividual": True
+}
+
+res = requests.post(
+    "https://ramp-sandbox.hexarails.ai/customer/create",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature
+    },
+    json=body
+)
+print(res.json())
+```
+
+```typescript TypeScript
+const body = {
+  name: "Alice Smith",
+  email: "alice@example.com",
+  type: "DEPOSITOR",
+  isIndividual: true
+};
+
+const res = await fetch("https://ramp-sandbox.hexarails.ai/customer/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature
+  },
+  body: JSON.stringify(body)
+});
+
+const data = await res.json();
+console.log(data);
+```
+
+</CodeGroup>
+
+**Example response:**
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "status": "PENDING",
+    "sumsubLink": "https://sumsub.com/link"
+  }
+}
+```
+
+### Step 6: Create a Deposit Address or Virtual Account
+
+Choose the next step based on your use case.
+
+**For crypto-to-fiat (offramp):**
+
+Create a crypto deposit address for your customer to send crypto that will be converted to fiat.
+
+```bash
+curl -X POST https://ramp-sandbox.hexarails.ai/deposit-address/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "currency": "USDT",
+    "network": "ETH"
+  }'
+```
+
+**For fiat-to-crypto (onramp):**
+
+Create a virtual account where your customer sends fiat that will be converted to crypto.
+
+```bash
+curl -X POST https://ramp-sandbox.hexarails.ai/virtual-account/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "currency": "AUD"
+  }'
+```
+
+<Note>
+  Virtual accounts support **GBP**, **EUR**, and **AUD** currencies. For AUD, you can optionally provide a `whitelist` object to pre-register a source bank account.
+</Note>
+
+### Step 7: Test in Sandbox
+
+The sandbox environment mirrors production behavior without processing real funds.
+
+| Feature | Sandbox | Production |
+|---------|---------|------------|
+| API base URL | `https://ramp-sandbox.hexarails.ai` | `https://ramp.hexarails.ai` |
+| Real money | No | Yes |
+| KYC verification | Simulated | Real (via Sumsub) |
+| Webhook delivery | Yes | Yes |
+| Rate limits | Relaxed | Standard |
+
+<Warning>
+  API keys are environment-specific. A sandbox key will not work in production.
+</Warning>
+
+</Steps>
+
+---
+
+## Next Steps
+
+You are now connected to the Coinut Partner Ramp API. Explore these guides to build your integration:
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Deep dive into HMAC-SHA256 canonical signing with full code examples
+  </Card>
+  <Card title="Customer API" icon="users" href="/api-customers">
+    Customer onboarding, KYC management, and customer lifecycle
+  </Card>
+  <Card title="Virtual Account" icon="building-columns" href="/api-virtual-accounts">
+    Fiat virtual accounts for GBP, EUR, and AUD with whitelist management
+  </Card>
+  <Card title="Deposit Address" icon="wallet" href="/api-deposit-addresses">
+    Crypto deposit addresses for USDT (ETH/TRX networks)
+  </Card>
+  <Card title="Autoramp Flow" icon="arrows-rotate" href="/api-autoramp">
+    Automated onramp/offramp flows combining VA, deposit address, bank account, and crypto address
+  </Card>
+  <Card title="Payment" icon="money-bill" href="/api-payments">
+    Fiat payouts from your partner balance to bank accounts
+  </Card>
+  <Card title="Deposit & Trade" icon="chart-line" href="/api-deposits">
+    Deposit tracking and OTC trade monitoring
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/webhooks">
+    Event types, payload schemas, and retry policy
+  </Card>
+</CardGroup>
+
+## Need Help?
+
+- **Contact**: support@coinut.com

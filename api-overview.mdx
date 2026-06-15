@@ -1,0 +1,295 @@
+---
+title: "API Overview"
+description: "Base URLs, authentication, conventions, and patterns for the Coinut Partner Ramp API."
+---
+
+## Base URLs
+
+| Environment | Base URL |
+|-------------|----------|
+| Production  | `https://ramp.hexarails.ai` |
+| Sandbox     | `https://ramp-sandbox.hexarails.ai` |
+
+Use the Sandbox environment for development and integration testing. All sandbox balances and transactions are simulated.
+
+## Authentication
+
+Every request must be authenticated using **HMAC-SHA256** request signing. You receive an API key and secret during partner onboarding.
+
+### Required Headers
+
+| Header | Description |
+|--------|-------------|
+| `X-API-Key` | Your API key |
+| `X-Timestamp` | Unix timestamp in seconds |
+| `X-Nonce` | A unique random string for each request |
+| `X-Signature` | HMAC-SHA256 hex digest of the canonical string described on the [Authentication](/authentication) page |
+
+### Signature Algorithm
+
+Build the canonical string with these newline-delimited parts, then sign it with HMAC-SHA256:
+
+```text
+METHOD
+HOST
+PATH
+QUERY
+BODY_SHA256_HEX
+TIMESTAMP
+NONCE
+```
+
+<Note>
+  Use the exact host from the environment you call, keep query parameters in their original order,
+  and use an empty body hash for `GET` and `multipart/form-data` requests. See the
+  [Authentication](/authentication) page for the full language examples.
+</Note>
+
+<Warning>
+  Requests with timestamps older than 60 seconds are rejected. Sync your server clock with NTP.
+</Warning>
+
+### Authenticated Request Example
+
+<CodeGroup>
+```bash cURL
+API_KEY="your_api_key"
+API_SECRET="your_api_secret"
+TIMESTAMP=$(date +%s)
+NONCE="$(uuidgen | tr '[:upper:]' '[:lower:]')"
+HOST="ramp.hexarails.ai"
+METHOD="GET"
+PATH="/balance"
+QUERY=""
+BODY_SHA256=""
+PAYLOAD="${METHOD}\n${HOST}\n${PATH}\n${QUERY}\n${BODY_SHA256}\n${TIMESTAMP}\n${NONCE}"
+SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$API_SECRET" | cut -d' ' -f2)
+
+curl -X "$METHOD" "https://ramp.hexarails.ai/balance" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+const crypto = require('crypto');
+
+const API_KEY = 'your_api_key';
+const API_SECRET = 'your_api_secret';
+const BASE_URL = 'https://ramp.hexarails.ai';
+
+async function authedRequest(method, path, body = {}) {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const host = new URL(BASE_URL).host;
+  const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body);
+  const bodyHash = requestBody
+    ? crypto.createHash('sha256').update(requestBody).digest('hex')
+    : '';
+  const canonical = [
+    method.toUpperCase(),
+    host,
+    path,
+    '',
+    bodyHash,
+    timestamp,
+    nonce,
+  ].join('\\n');
+  const signature = crypto.createHmac('sha256', API_SECRET).update(canonical).digest('hex');
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Signature': signature,
+    },
+    body: method.toUpperCase() === 'GET' ? undefined : JSON.stringify(body),
+  });
+
+  return response.json();
+}
+
+// Usage
+authedRequest('GET', '/balance').then(console.log);
+```
+
+```python Python
+import hmac, hashlib, json, time, requests
+
+API_KEY = 'your_api_key'
+API_SECRET = 'your_api_secret'
+BASE_URL = 'https://ramp.hexarails.ai'
+
+def authed_request(method, path, body=None):
+    body = body or {}
+    timestamp = str(int(time.time()))
+    nonce = '550e8400-e29b-41d4-a716-446655440000'
+    host = 'ramp.hexarails.ai'
+    request_body = '' if method.upper() == 'GET' else json.dumps(body, separators=(',', ':'))
+    body_hash = hashlib.sha256(request_body.encode()).hexdigest() if request_body else ''
+    payload = '\n'.join([method.upper(), host, path, '', body_hash, timestamp, nonce])
+    signature = hmac.new(
+        API_SECRET.encode(),
+        payload.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    headers = {
+        'Content-Type': 'application/json',
+        'X-API-Key': API_KEY,
+        'X-Timestamp': timestamp,
+        'X-Nonce': nonce,
+        'X-Signature': signature,
+    }
+
+    resp = requests.request(
+        method,
+        f'{BASE_URL}{path}',
+        headers=headers,
+        json=None if method.upper() == 'GET' else body
+    )
+    return resp.json()
+
+# Usage
+print(authed_request('GET', '/balance'))
+```
+
+```typescript TypeScript
+import crypto from 'crypto';
+
+const API_KEY = 'your_api_key';
+const API_SECRET = 'your_api_secret';
+const BASE_URL = 'https://ramp.hexarails.ai';
+
+async function authedRequest<T>(
+  method: string,
+  path: string,
+  body: Record<string, unknown> = {}
+): Promise<T> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const host = new URL(BASE_URL).host;
+  const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body);
+  const bodyHash = requestBody
+    ? crypto.createHash('sha256').update(requestBody).digest('hex')
+    : '';
+  const payload = [
+    method.toUpperCase(),
+    host,
+    path,
+    '',
+    bodyHash,
+    timestamp,
+    nonce,
+  ].join('\\n');
+  const signature = crypto.createHmac('sha256', API_SECRET).update(payload).digest('hex');
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Signature': signature,
+    },
+    body: method.toUpperCase() === 'GET' ? undefined : JSON.stringify(body),
+  });
+
+  return response.json() as T;
+}
+
+// Usage
+authedRequest('GET', '/balance').then(console.log);
+```
+</CodeGroup>
+
+## Request & Response Format
+
+- All requests and responses use **JSON** with **UTF-8** encoding.
+- Set `Content-Type: application/json` on every request.
+- Use **POST** for mutations and **GET** for reads unless specified otherwise.
+
+### Success Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": { }
+}
+```
+
+### Error Response
+
+```json
+{
+  "status": "INVALID_PARAMETERS | UNAUTHORISED | FAILED",
+  "message": "Human-readable description of the error"
+}
+```
+
+## HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Request succeeded. |
+| `422` | Contract-defined application or validation error. |
+
+<Note>
+  The latest contract documents `200` and `422` at the API layer. Infrastructure-level `401`, `429`,
+  or `5xx` responses may still occur and should be handled defensively by clients.
+</Note>
+
+## Pagination
+
+List endpoints return paginated results using these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pageNum` | integer | Current page number (1-based) |
+| `pageSize`| integer | Items per page |
+| `total`   | integer | Total matching records |
+
+### Example Paginated Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "list": [ /* items */ ],
+    "pageNum": 1,
+    "pageSize": 10,
+    "total": 47
+  }
+}
+```
+
+Pass `pageNum` and `pageSize` as query parameters on list endpoints. `pageSize` defaults to 10 and caps at 100.
+
+## API Categories
+
+| Category | Description | Endpoints |
+|----------|-------------|-----------|
+| **Common** | Balance, configuration, health, webhook settings | [`/health`](/api-common#get-health) [`/balance`](/api-common#get-balance) [`/callback-url`](/api-common#get-callback-url) |
+| **Customers** | Customer onboarding and KYC verification | [`POST /customer/create`](/api-customers#post-customercreate) [`GET /customer/detail`](/api-customers#get-customerdetail) [`GET /customer/list`](/api-customers#get-customerlist) |
+| **Virtual Accounts** | Fiat virtual accounts for receiving payments | [`POST /virtual-account/create`](/api-virtual-accounts#post-virtual-accountcreate) [`GET /virtual-account/list`](/api-virtual-accounts#get-virtual-accountlist) [`GET /virtual-account/detail`](/api-virtual-accounts#get-virtual-accountdetail) |
+| **Crypto Addresses** | Destination wallet addresses for payouts | `POST /crypto-address/add` `GET /crypto-address/list` `GET /crypto-address/detail` |
+| **Deposit Addresses** | Source crypto addresses for customer deposits | `POST /deposit-address/create` `GET /deposit-address/list` |
+| **Bank Accounts** | Customer bank accounts for fiat payouts | `POST /bank-account/add` `GET /bank-account/list` `GET /bank-account/detail` |
+| **Autoramp** | Automated onramp and offramp flows | `POST /autoramp-flow/create` `GET /autoramp-flow/list` |
+| **Deposits** | Deposit transaction monitoring | `GET /deposit/list` `GET /deposit/detail` |
+| **Trades** | OTC trade records and history | `GET /trade/list` `GET /trade/detail` |
+| **Payments** | Direct fiat payments to beneficiaries | `POST /payment/create` `GET /payment/list` |
+
+## Rate Limiting
+
+<Warning>
+  Rate limits apply per API key. Exceeding the limit returns HTTP 429. Default limits are **100 requests per minute** per key. Contact support to raise your limit.
+</Warning>
+
+If you hit a 429, wait for the `Retry-After` header (seconds) before retrying. Use exponential backoff with jitter in your client.

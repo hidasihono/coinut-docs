@@ -1,0 +1,165 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Coinut",
+
+  "colors": {
+    "primary": "#0F172A",
+    "light": "#334155",
+    "dark": "#020617"
+  },
+
+  "favicon": "/images/favicon.svg",
+
+  "logo": {
+    "light": "/images/logo-light.svg",
+    "dark": "/images/logo-dark.svg"
+  },
+
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "index",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "onramp-integration",
+              "offramp-integration",
+              "virtual-accounts-guide",
+              "qr-code-payments"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "webhooks",
+              "errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-overview"
+            ]
+          },
+          {
+            "group": "Common",
+            "pages": [
+              "api-common"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api-customers"
+            ]
+          },
+          {
+            "group": "Virtual Accounts",
+            "pages": [
+              "api-virtual-accounts"
+            ]
+          },
+          {
+            "group": "Crypto Addresses",
+            "pages": [
+              "api-crypto-addresses"
+            ]
+          },
+          {
+            "group": "Deposit Addresses",
+            "pages": [
+              "api-deposit-addresses"
+            ]
+          },
+          {
+            "group": "Bank Accounts",
+            "pages": [
+              "api-bank-accounts"
+            ]
+          },
+          {
+            "group": "Autoramp",
+            "pages": [
+              "api-autoramp"
+            ]
+          },
+          {
+            "group": "Deposits",
+            "pages": [
+              "api-deposits"
+            ]
+          },
+          {
+            "group": "Trades",
+            "pages": [
+              "api-trades"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api-payments"
+            ]
+          }
+        ]
+      }
+    ],
+
+    "global": {
+      "anchors": [
+        {
+          "anchor": "Dashboard",
+          "href": "https://partner.coinut.com",
+          "icon": "layout-dashboard"
+        },
+        {
+          "anchor": "Support",
+          "href": "mailto:api-support@coinut.com",
+          "icon": "life-ring"
+        }
+      ]
+    }
+  },
+
+  "api": {
+    "mdxServer": {
+      "enabled": true
+    }
+  },
+
+  "background": {
+    "style": "windows"
+  },
+
+  "navbar": {
+    "links": [
+      {
+        "label": "Support",
+        "href": "mailto:api-support@coinut.com"
+      }
+    ]
+  },
+
+  "footer": {
+    "socials": {
+      "twitter": "https://twitter.com/coinut",
+      "github": "https://github.com/coinut",
+      "linkedin": "https://linkedin.com/company/coinut"
+    }
+  }
+}

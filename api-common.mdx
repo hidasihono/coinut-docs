@@ -1,0 +1,508 @@
+---
+title: "Common"
+description: "Health check, balance inquiry, configuration, and utility endpoints."
+---
+
+## GET /health
+
+Check API availability.
+
+<Warning>
+  The latest OpenAPI contract applies global security at the document level, but `/health` is commonly
+  used as a simple liveness check. Confirm whether your environment requires authentication before relying
+  on anonymous access to this endpoint.
+</Warning>
+
+<ParamField query="none" type="none">
+  No parameters required.
+</ParamField>
+
+### Response
+
+<ResponseField name="status" type="string" required>
+  Always `"ok"` when the API is healthy.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/health" \
+  -H "Content-Type: application/json"
+```
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "status": "ok"
+  }
+}
+```
+</CodeGroup>
+
+---
+
+## GET /balance
+
+Retrieve your partner account balance.
+
+<ParamField query="none" type="none">
+  No parameters required.
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="object[]" required>
+  Array of balance entries.
+</ResponseField>
+
+<ResponseField name="data[].balance" type="string" required>
+  Available balance as a decimal string.
+</ResponseField>
+
+<ResponseField name="data[].currency" type="string" required>
+  Currency code (e.g. `USDT`).
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/balance" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/balance').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/balance'))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/balance').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": [
+    {
+      "balance": "10000.50",
+      "currency": "USDT"
+    }
+  ]
+}
+```
+
+---
+
+## GET /deposit-address
+
+Get the deposit address for a specific currency and blockchain network.
+
+### Query Parameters
+
+<ParamField query="currency" type="string" required>
+  Currency code. Example: `USDT`
+</ParamField>
+
+<ParamField query="network" type="string" required>
+  Blockchain network. Enum: `ETH`, `TRX`
+</ParamField>
+
+### Response
+
+<ResponseField name="data.address" type="string" required>
+  Deposit address on the specified network.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/deposit-address?currency=USDT&network=ETH" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/deposit-address?currency=USDT&network=ETH').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/deposit-address', {"currency": "USDT", "network": "ETH"}))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/deposit-address?currency=USDT&network=ETH').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb"
+  }
+}
+```
+
+---
+
+## GET /callback-url
+
+Retrieve your currently registered webhook callback URL.
+
+<ParamField query="none" type="none">
+  No parameters required.
+</ParamField>
+
+### Response
+
+<ResponseField name="data.callbackUrl" type="string" required>
+  The URL where webhook events are sent.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/callback-url" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/callback-url').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/callback-url'))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/callback-url').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "callbackUrl": "https://your-domain.com/webhooks/coinut"
+  }
+}
+```
+
+---
+
+## POST /callback-url
+
+Update the webhook callback URL.
+
+### Request Body
+
+<ParamField body="callbackUrl" type="string" required>
+  HTTPS URL to receive webhook events. Must be reachable from Coinut servers.
+</ParamField>
+
+### Response
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://ramp.hexarails.ai/callback-url" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{"callbackUrl":"https://your-domain.com/webhooks/coinut"}'
+```
+
+```javascript JavaScript
+authedRequest('POST', '/callback-url', {
+  callbackUrl: 'https://your-domain.com/webhooks/coinut'
+}).then(console.log);
+```
+
+```python Python
+print(authed_request('POST', '/callback-url', {
+    "callbackUrl": "https://your-domain.com/webhooks/coinut"
+}))
+```
+
+```typescript TypeScript
+authedRequest('POST', '/callback-url', {
+  callbackUrl: 'https://your-domain.com/webhooks/coinut'
+}).then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "message": "Callback URL updated successfully"
+  }
+}
+```
+
+<Note>
+  The callback URL must use HTTPS. Coinut verifies reachability before saving.
+</Note>
+
+---
+
+## GET /subscribed-events
+
+Get the list of webhook events you are subscribed to.
+
+<ParamField query="none" type="none">
+  No parameters required.
+</ParamField>
+
+### Response
+
+<ResponseField name="data.events" type="string[]" required>
+  Array of event type names. See [Webhooks](/webhooks) for full list.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/subscribed-events" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/subscribed-events').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/subscribed-events'))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/subscribed-events').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "events": ["CUSTOMER_APPROVED", "DEPOSIT_RECEIVED"]
+  }
+}
+```
+
+---
+
+## POST /subscribed-events
+
+Update the list of subscribed webhook events.
+
+### Request Body
+
+<ParamField body="events" type="string[]" required>
+  Array of event type names to subscribe to.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://ramp.hexarails.ai/subscribed-events" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{"events":["CUSTOMER_APPROVED","DEPOSIT_RECEIVED"]}'
+```
+
+```javascript JavaScript
+authedRequest('POST', '/subscribed-events', {
+  events: ['CUSTOMER_APPROVED', 'DEPOSIT_RECEIVED']
+}).then(console.log);
+```
+
+```python Python
+print(authed_request('POST', '/subscribed-events', {
+    "events": ["CUSTOMER_APPROVED", "DEPOSIT_RECEIVED"]
+}))
+```
+
+```typescript TypeScript
+authedRequest('POST', '/subscribed-events', {
+  events: ['CUSTOMER_APPROVED', 'DEPOSIT_RECEIVED']
+}).then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "message": "Subscribed events updated successfully"
+  }
+}
+```
+
+---
+
+## GET /ip-white-list
+
+Retrieve the IP addresses whitelisted for API access.
+
+<ParamField query="none" type="none">
+  No parameters required.
+</ParamField>
+
+### Response
+
+<ResponseField name="data.ipWhiteList" type="string[]" required>
+  Array of whitelisted IPv4 or IPv6 addresses.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/ip-white-list" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/ip-white-list').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/ip-white-list'))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/ip-white-list').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "ipWhiteList": ["1.2.3.4", "5.6.7.8"]
+  }
+}
+```
+
+---
+
+## POST /ip-white-list
+
+Update the IP whitelist.
+
+### Request Body
+
+<ParamField body="ipWhiteList" type="string[]" required>
+  Array of IPv4 or IPv6 addresses to whitelist. Replaces the existing list entirely.
+</ParamField>
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://ramp.hexarails.ai/ip-white-list" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE" \
+  -d '{"ipWhiteList":["1.2.3.4"]}'
+```
+
+```javascript JavaScript
+authedRequest('POST', '/ip-white-list', {
+  ipWhiteList: ['1.2.3.4']
+}).then(console.log);
+```
+
+```python Python
+print(authed_request('POST', '/ip-white-list', {
+    "ipWhiteList": ["1.2.3.4"]
+}))
+```
+
+```typescript TypeScript
+authedRequest('POST', '/ip-white-list', {
+  ipWhiteList: ['1.2.3.4']
+}).then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "message": "IP whitelist updated successfully"
+  }
+}
+```
+
+<Warning>
+  This endpoint replaces the entire whitelist. Include all desired IPs in every request. Omitting an address removes it.
+</Warning>
+
+---
+
+## GET /basic-info
+
+Get your partner account basic information.
+
+<ParamField query="none" type="none">
+  No parameters required.
+</ParamField>
+
+### Response
+
+<ResponseField name="data.name" type="string" required>
+  Your partner account display name.
+</ResponseField>
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://ramp.hexarails.ai/basic-info" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Signature: $SIGNATURE"
+```
+
+```javascript JavaScript
+authedRequest('GET', '/basic-info').then(console.log);
+```
+
+```python Python
+print(authed_request('GET', '/basic-info'))
+```
+
+```typescript TypeScript
+authedRequest('GET', '/basic-info').then(console.log);
+```
+</CodeGroup>
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "name": "Partner Name"
+  }
+}
+```

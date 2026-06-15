@@ -1,0 +1,138 @@
+---
+title: "Introduction"
+description: "Complete API documentation for Coinut Partner Ramp. Onramp, Offramp, and Virtual Account APIs for seamless crypto-fiat integration."
+---
+
+## About Coinut Partner Ramp
+
+Coinut Partner Ramp is the crypto-fiat infrastructure layer built by Coinut, a regulated digital asset trading and payments platform founded in 2013. We operate across **Singapore, Switzerland, Canada, and USA**, providing compliant payment rails to businesses worldwide.
+
+Coinut Partner Ramp lets you offer cryptocurrency services to your customers without building complex blockchain infrastructure or navigating regulatory requirements yourself.
+
+## What You Can Build
+
+<CardGroup cols={3}>
+  <Card title="Onramp" icon="arrow-up-right-from-square">
+    Convert fiat to crypto. Your customers pay with bank transfers or cards, receive cryptocurrency directly to their wallets.
+  </Card>
+  <Card title="Offramp" icon="arrow-down-to-bracket">
+    Convert crypto to fiat. Your customers send cryptocurrency, receive fiat currency via bank transfer.
+  </Card>
+  <Card title="Virtual Accounts" icon="building-columns">
+    Receive fiat payments through dedicated Virtual Account numbers tied to individual customers.
+  </Card>
+</CardGroup>
+
+## Integration Modes
+
+| Mode | Best For | How It Works |
+|------|----------|-------------|
+| **Autoramp** | Individual customers, consumer apps | Automated KYC, step-by-step flow, customer manages their own verification |
+| **Omnibus** | Enterprise, platforms, marketplaces | Direct API calls, bulk operations, you manage customer aggregation |
+
+Choose Autoramp for faster time-to-market with individual users. Choose Omnibus if you operate a platform with pooled liquidity or need full control over the customer experience.
+
+## Architecture
+
+```
+┌─────────────────────┐      ┌──────────────────────────┐      ┌─────────────────────────┐
+│     Partner App     │ ───▶ │   Coinut Partner Ramp    │ ───▶ │    Banking Network      │
+│     (Your App)      │ ◀─── │           API            │ ◀─── │    + Blockchain         │
+└─────────────────────┘      └──────────────────────────┘      └─────────────────────────┘
+```
+Your application sends signed HTTPS requests to the Coinut Partner Ramp API. We handle the complexity of banking integrations, blockchain transactions, compliance checks, and liquidity management. You receive webhook notifications for every state change.
+
+## Licensing & Compliance
+
+| Jurisdiction | License / Registration | Authority |
+|-------------|----------------------|-----------|
+| Singapore | Major Payment Institution (IPA) | MAS |
+| Canada | MSB | FINTRAC |
+| Switzerland | VQF Member | FINMA |
+| USA | MSB | FinCEN |
+
+We perform KYC/AML screening, transaction monitoring, and regulatory reporting so you don't have to.
+
+## Key Features
+
+- **HMAC-SHA256 Authentication** — Every request cryptographically signed
+- **Real-time Webhooks** — Instant notifications for deposits, withdrawals, and state changes
+- **Sandbox Environment** — Test end-to-end flows without real money
+- **Multi-currency Support** — Fiat: USD, EUR, GBP, AUD, CAD, SGD. Crypto: USDT, USDC, and more
+- **Global Compliance** — Licensed across 6 jurisdictions, automated KYC/AML
+
+## Who This Is For
+
+- **Developers** integrating crypto-fiat rails into applications
+- **Product Managers** evaluating ramp providers
+- **QA Engineers** building test suites for payment flows
+- **Business Teams** exploring partnership opportunities
+- **Technical Partners** building on Coinut Partner Ramp infrastructure
+- **Web3 Developers** needing fiat Onramp and Offramp capabilities for dApps
+
+<CardGroup cols={2}>
+  <Card title="Onramp" icon="arrow-down-to-line" href="/onramp-integration">
+    Accept fiat into customer virtual accounts and route funds into crypto settlement flows.
+  </Card>
+  <Card title="Offramp" icon="arrow-up-from-line" href="/offramp-integration">
+    Receive customer crypto and settle fiat to approved bank accounts.
+  </Card>
+  <Card title="Autoramp" icon="repeat-2" href="/api-autoramp">
+    Automate the full entry-to-exit route with linked VA, crypto address, bank account, deposit, and trade records.
+  </Card>
+  <Card title="Virtual Accounts" icon="landmark" href="/virtual-accounts-guide">
+    Issue customer-level AUD, EUR, and GBP receiving accounts with PayID and whitelist support where available.
+  </Card>
+</CardGroup>
+
+## Integration models
+
+| Model | Use it when | Primary APIs |
+| --- | --- | --- |
+| **Autoramp** | You want Coinut to orchestrate the conversion route after setup | `/autoramp-flow/*`, `/virtual-account/*`, `/deposit-address/*` |
+| **Omnibus** | You manage the customer experience and call each API directly | `/customer/*`, `/bank-account/*`, `/crypto-address/*`, `/deposit/*`, `/trade/*` |
+
+## Core flow
+
+<Steps>
+  <Step title="Create the customer">
+    Create a customer with `POST /customer/create`. The response includes a Coinut customer ID and, when applicable, a Sumsub KYC link.
+  </Step>
+  <Step title="Complete KYC">
+    Wait for approval through the Sumsub flow or your shared due diligence process. Use `GET /customer/detail` or the `CUSTOMER_APPROVED` webhook to confirm status.
+  </Step>
+  <Step title="Provision rails">
+    Create virtual accounts, bank accounts, crypto addresses, or deposit addresses depending on the product flow.
+  </Step>
+  <Step title="Create the ramp flow">
+    Use Autoramp endpoints for managed onramp/offramp orchestration, or call Omnibus APIs directly for partner-controlled flows.
+  </Step>
+  <Step title="Reconcile with webhooks">
+    Subscribe to customer, VA, deposit, trade, and payment events. Store Coinut IDs and your own `externalId` for clean reconciliation.
+  </Step>
+</Steps>
+
+## Environments
+
+| Environment | Base URL | Purpose |
+| --- | --- | --- |
+| Sandbox | `https://ramp-sandbox.hexarails.ai` | Integration testing without live funds |
+| Production | `https://ramp.hexarails.ai` | Live partner ramp transactions |
+
+<Warning>
+  Production transactions can move real funds. Complete sandbox testing, webhook verification, IP allowlisting, and operational reconciliation before going live.
+</Warning>
+
+## Start here
+
+<CardGroup cols={3}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Make your first signed request and create a test customer.
+  </Card>
+  <Card title="Authentication" icon="key-round" href="/authentication">
+    Implement HMAC-SHA256 signing correctly.
+  </Card>
+  <Card title="API Reference" icon="braces" href="/api-overview">
+    Explore every endpoint from the OpenAPI contract.
+  </Card>
+</CardGroup>
