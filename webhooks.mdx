@@ -40,31 +40,28 @@ All webhooks:
     ```
   </Step>
   <Step title="Verify signature">
-    `rampdocs.json` does not define a webhook signature header or verification algorithm.
-    If Coinut enables signed webhooks for your environment, follow the latest operational guidance
-    provided with your partner account.
+    `rampdocs.json` does not define a webhook signature header or verification algorithm. If Coinut enables signed webhooks for your environment, follow the latest operational guidance provided with your partner account.
   </Step>
   <Step title="Acknowledge receipt">
-    Return HTTP `200` within 30 seconds. The exact retry policy is not defined in `rampdocs.json`,
-    so your handler should be idempotent and safe to receive duplicate deliveries.
+    Return HTTP `200` within 30 seconds. The exact retry policy is not defined in `rampdocs.json`, so your handler should be idempotent and safe to receive duplicate deliveries.
   </Step>
 </Steps>
 
 ## Webhook Delivery
 
 | Property | Value |
-|----------|-------|
+| --- | --- |
 | Method | `POST` |
 | Protocol | HTTPS only |
 | Timeout | 30 seconds |
 | Retries | Not specified in `rampdocs.json` |
 | Backoff | Not specified in `rampdocs.json` |
-| Deduplication | `event` + `payload` combination |
+| Deduplication | `event` \+ `payload` combination |
 
 ## Event Types
 
 | Event | Description | Payload Type |
-|-------|-------------|--------------|
+| --- | --- | --- |
 | `CUSTOMER_APPROVED` | Customer KYC approved | `GetCustomerDataDto` |
 | `CUSTOMER_REJECTED` | Customer KYC rejected | `GetCustomerDataDto` |
 | `CUSTOMER_DELETED` | Customer deleted | `GetCustomerDataDto` |
@@ -79,15 +76,10 @@ All webhooks:
 | `TRADE_SETTLED` | Trade completed | `TradeDetailDataDto` |
 | `PAYMENT_SETTLED` | Payment completed | `GetPaymentDetailDataDto` |
 
-<Warning>
-  Legacy event names (`user.approved`, `user.rejected`, `va.approved`, `va.rejected`,
-  `deposit.received`, `deposit.approved`, `deposit.rejected`, `trade.created`, `trade.settled`)
-  are deprecated and will be removed. Migrate to the new UPPER_SNAKE_CASE names.
-</Warning>
-
 ## Webhook Payload Examples
 
 <CodeGroup>
+
 ```json CUSTOMER_APPROVED
 {
   "event": "CUSTOMER_APPROVED",
@@ -173,24 +165,21 @@ All webhooks:
   }
 }
 ```
+
 </CodeGroup>
 
 ## Signature Verification
 
-`rampdocs.json` does not define a webhook signature header or signature-construction method.
-If your partner setup includes signed webhook delivery, use Coinut's current operational guidance for
-header names, canonicalization rules, and retry handling.
+`rampdocs.json` does not define a webhook signature header or signature-construction method. If your partner setup includes signed webhook delivery, use Coinut's current operational guidance for header names, canonicalization rules, and retry handling.
 
 ## Best Practices
 
-- **Verify signatures when enabled.** If Coinut provides a webhook signature mechanism for your environment,
-  validate it before processing the payload.
-- **Handle idempotently.** Use the `event` + `payload.id` combination to prevent duplicate processing.
+- **Verify signatures when enabled.** If Coinut provides a webhook signature mechanism for your environment, validate it before processing the payload.
+- **Handle idempotently.** Use the `event` \+ `payload.id` combination to prevent duplicate processing.
 - **Return 200 quickly.** Respond immediately, then process the event asynchronously.
 - **Log everything.** Store raw payloads and headers for debugging.
 - **Expect retries.** The same event may arrive multiple times if your handler is slow.
 
 <Tip>
-  Test webhooks locally with [ngrok](https://ngrok.com). Run `ngrok http 3000`, then register the
-  HTTPS tunnel URL as your callback endpoint. Coinut will deliver events to your local machine.
+  Test webhooks locally with [ngrok](https://ngrok.com). Run `ngrok http 3000`, then register the HTTPS tunnel URL as your callback endpoint. Coinut will deliver events to your local machine.
 </Tip>

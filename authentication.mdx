@@ -7,10 +7,6 @@ description: "How to authenticate with Coinut Partner Ramp APIs using HMAC-SHA25
 
 Every request to the Coinut Partner Ramp API must be cryptographically signed using **HMAC-SHA256**. The server verifies the signature against your **API Secret** stored on the Coinut side. Requests without a valid signature are rejected with `401 Unauthorized` or `422 Unprocessable Entity`.
 
-<Warning>
-  Never expose your API Secret in client-side code, frontend applications, or public repositories. It must remain server-side only.
-</Warning>
-
 ## Required Headers
 
 Include these four headers in every authenticated request:
@@ -453,18 +449,4 @@ The `X-Timestamp` must be a **Unix timestamp in seconds** (not milliseconds or m
   You can have multiple active key pairs during rotation. Revoke the old key only after confirming the new one works in production.
 </Note>
 
-## API Environments
-
-### Update IP Whitelist
-
-```bash
-curl -X POST https://ramp-sandbox.hexarails.ai/ip-white-list \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: $API_KEY" \
-  -H "X-Timestamp: $TIMESTAMP" \
-  -H "X-Nonce: $NONCE" \
-  -H "X-Signature: $SIGNATURE" \
-  -d '{
-    "ipWhiteList": ["115.236.134.118", "47.89.58.120"]
-  }'
-```
+## 

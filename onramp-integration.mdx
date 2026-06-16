@@ -88,6 +88,18 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     Generate a QR code for PayID to simplify mobile banking transfers.
   </Step>
+  <Step title="Display VA to Customer">
+    Show the virtual account details in your UI:
+
+    - **AUD**: Display PayID (e.g., `john.doe@example.com`) and BSB \+ Account Number
+    - **EUR**: Display IBAN and SWIFT/BIC
+    - **GBP**: Display IBAN and Sort Code
+    - **USD**: Display IBAN and Sort Code
+    - **SGD**: Display IBAN and Sort Code
+    - **other currencies** : Contact Coinut support for the exact banking fields
+
+    Generate a QR code for PayID to simplify mobile banking transfers.
+  </Step>
   <Step title="Monitor Deposits">
     Listen for webhooks:
 
@@ -109,6 +121,12 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     - ERC-20: [https://etherscan.io/tx/{txHash}](https://etherscan.io/tx/{txHash})
     - TRC-20: [https://tronscan.org/#/transaction/{txHash}](https://tronscan.org/#/transaction/{txHash})
+  </Step>
+  <Step title="Confirm Settlement">
+    The `TRADE_SETTLED` webhook includes `txHash`. Use it to verify the crypto transaction on-chain:
+
+    - ERC-20: [https://etherscan.io/tx/](https://etherscan.io/tx/{txHash}){txHash}
+    - TRC-20: [https://tronscan.org/#/transaction/](https://tronscan.org/#/transaction/{txHash}){txHash}
   </Step>
 </Steps>
 

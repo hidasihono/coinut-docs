@@ -7,13 +7,6 @@ description: "Health check, balance inquiry, configuration, and utility endpoint
 
 Check API availability.
 
-<Warning>
-  Live testing on June 16, 2026 showed that unauthenticated `GET /health` returned
-  `{"status":"UNAUTHORISED","message":"missing required headers"}` with HTTP `200`, while a signed
-  request from a non-allowlisted IP returned `403 error code: 1010`. Do not treat an anonymous
-  `200` on `/health` as proof that your integration is ready.
-</Warning>
-
 <ParamField query="none" type="none">
   No parameters required.
 </ParamField>
@@ -29,6 +22,7 @@ Check API availability.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/health" \
   -H "Content-Type: application/json"
@@ -40,11 +34,11 @@ curl -X GET "https://ramp.hexarails.ai/health" \
   "message": "missing required headers"
 }
 ```
+
 </CodeGroup>
 
 <Note>
-  Use `/health` as a reachability signal only. To prove the full integration path, you still need a
-  signed request from an allowlisted IP.
+  Use `/health` as a reachability signal only. To prove the full integration path, you still need a signed request from an allowlisted IP.
 </Note>
 
 ---
@@ -72,6 +66,7 @@ Retrieve your partner account balance.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/balance" \
   -H "Content-Type: application/json" \
@@ -92,6 +87,7 @@ print(authed_request('GET', '/balance'))
 ```typescript TypeScript
 authedRequest('GET', '/balance').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -129,6 +125,7 @@ Get the deposit address for a specific currency and blockchain network.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/deposit-address?currency=USDT&network=ETH" \
   -H "Content-Type: application/json" \
@@ -149,6 +146,7 @@ print(authed_request('GET', '/deposit-address', {"currency": "USDT", "network": 
 ```typescript TypeScript
 authedRequest('GET', '/deposit-address?currency=USDT&network=ETH').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -177,6 +175,7 @@ Retrieve your currently registered webhook callback URL.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/callback-url" \
   -H "Content-Type: application/json" \
@@ -197,6 +196,7 @@ print(authed_request('GET', '/callback-url'))
 ```typescript TypeScript
 authedRequest('GET', '/callback-url').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -223,6 +223,7 @@ Update the webhook callback URL.
 ### Response
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/callback-url" \
   -H "Content-Type: application/json" \
@@ -250,6 +251,7 @@ authedRequest('POST', '/callback-url', {
   callbackUrl: 'https://your-domain.com/webhooks/coinut'
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -282,6 +284,7 @@ Get the list of webhook events you are subscribed to.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/subscribed-events" \
   -H "Content-Type: application/json" \
@@ -302,6 +305,7 @@ print(authed_request('GET', '/subscribed-events'))
 ```typescript TypeScript
 authedRequest('GET', '/subscribed-events').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -326,6 +330,7 @@ Update the list of subscribed webhook events.
 </ParamField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/subscribed-events" \
   -H "Content-Type: application/json" \
@@ -353,6 +358,7 @@ authedRequest('POST', '/subscribed-events', {
   events: ['CUSTOMER_APPROVED', 'DEPOSIT_RECEIVED']
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -381,6 +387,7 @@ Retrieve the IP addresses whitelisted for API access.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/ip-white-list" \
   -H "Content-Type: application/json" \
@@ -401,6 +408,7 @@ print(authed_request('GET', '/ip-white-list'))
 ```typescript TypeScript
 authedRequest('GET', '/ip-white-list').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -425,6 +433,7 @@ Update the IP whitelist.
 </ParamField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X POST "https://ramp.hexarails.ai/ip-white-list" \
   -H "Content-Type: application/json" \
@@ -452,6 +461,7 @@ authedRequest('POST', '/ip-white-list', {
   ipWhiteList: ['1.2.3.4']
 }).then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response
@@ -484,6 +494,7 @@ Get your partner account basic information.
 </ResponseField>
 
 <CodeGroup>
+
 ```bash cURL
 curl -X GET "https://ramp.hexarails.ai/basic-info" \
   -H "Content-Type: application/json" \
@@ -504,6 +515,7 @@ print(authed_request('GET', '/basic-info'))
 ```typescript TypeScript
 authedRequest('GET', '/basic-info').then(console.log);
 ```
+
 </CodeGroup>
 
 ```json Response

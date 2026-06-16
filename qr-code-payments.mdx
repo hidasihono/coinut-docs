@@ -13,7 +13,7 @@ QR codes bridge the gap between your app and the customer's banking/wallet app. 
 
 PayID QR codes follow the standard format:
 
-```
+```text
 payid:{payIdAddress}
 ```
 
@@ -26,7 +26,7 @@ When scanned with an Australian banking app, the PayID field is auto-populated a
 All major Australian banks support PayID/Osko QR scanning:
 
 | Bank | PayID Support | QR Scanning |
-|------|--------------|-------------|
+| --- | --- | --- |
 | Commonwealth Bank | Yes | Yes |
 | ANZ | Yes | Yes |
 | NAB | Yes | Yes |
@@ -41,6 +41,7 @@ All major Australian banks support PayID/Osko QR scanning:
 ### Node.js
 
 <CodeGroup>
+
 ```javascript Generate as Data URL
 // npm install qrcode
 const QRCode = require('qrcode');
@@ -124,11 +125,13 @@ async function generatePayIdQRSVG(payId) {
 const svg = await generatePayIdQRSVG('john.doe@example.com');
 // <div dangerouslySetInnerHTML={{ __html: svg }} />
 ```
+
 </CodeGroup>
 
 ### Python
 
 <CodeGroup>
+
 ```python Generate as Base64 Data URL
 # pip install qrcode[pil]
 import qrcode
@@ -242,11 +245,13 @@ def generate_payid_qr_with_logo(
 
     img.save(output_path)
 ```
+
 </CodeGroup>
 
 ### TypeScript / React
 
 <CodeGroup>
+
 ```tsx React Component
 // npm install qrcode.react
 import { QRCodeSVG } from 'qrcode.react';
@@ -350,12 +355,13 @@ export class QRCodeService {
   }
 }
 ```
+
 </CodeGroup>
 
 ## Best Practices
 
 | Aspect | Recommendation |
-|--------|---------------|
+| --- | --- |
 | Format | Always use `payid:` prefix for AUD payments |
 | Error Correction | High (`H`) level — allows logo overlays and better scan reliability |
 | Minimum Size | 200×200px for digital display, 2×2cm for print |
@@ -368,17 +374,19 @@ export class QRCodeService {
 
 For crypto deposits, use the standard URI format:
 
-```
+```text
 {currency}:{address}?network={network}
 ```
 
 **Example for ERC-20 USDT**:
-```
+
+```text
 ethereum:0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E?network=ETH
 ```
 
 **Example for TRC-20 USDT**:
-```
+
+```text
 tron:TXYZ1234567890...?network=TRX
 ```
 
@@ -410,23 +418,18 @@ const qr = await generateCryptoQR(
   <Step title="Create VA">
     Call `POST /virtual-account/create` with `customerId` and `currency`.
   </Step>
-
   <Step title="Extract PayID">
     From the response, get `response.data.payId`.
   </Step>
-
   <Step title="Generate QR">
     Use one of the code examples above to generate a QR code from `payid:{payId}`.
   </Step>
-
   <Step title="Display in UI">
-    Embed the QR code in your payment page alongside the text PayID and BSB + Account Number.
+    Embed the QR code in your payment page alongside the text PayID and BSB \+ Account Number.
   </Step>
-
   <Step title="Customer Scans">
     Customer opens their banking app, scans the QR code, enters the amount, and confirms.
   </Step>
-
   <Step title="Payment Arrives">
     Your webhook endpoint receives a `DEPOSIT_RECEIVED` event. Processing begins automatically.
   </Step>
@@ -451,11 +454,3 @@ Verify your QR codes before deploying:
 zbarimg --raw payid-qr.png
 # Expected output: payid:john.doe@example.com
 ```
-
-<Tip>
-  Use High (`H`) error correction level if you plan to overlay a logo or icon in the center of the QR code. This uses more data modules but allows up to 30% of the code to be damaged or covered while remaining scannable.
-</Tip>
-
-<Warning>
-  Always serve QR code generation endpoints over HTTPS. Never generate QR codes client-side with sensitive payment details exposed in JavaScript.
-</Warning>

@@ -65,7 +65,3 @@ async function retryTransient<T>(fn: () => Promise<Response>, maxRetries = 4): P
 - For network failures, query detail/list endpoints before retrying create actions.
 - Store your own stable references such as `externalId` and payment `reference`.
 - Make webhook processing idempotent because retries are expected.
-
-<Warning>
-  A timeout does not prove that a payment, deposit action, or flow creation failed. Check the related detail endpoint before creating a replacement.
-</Warning>

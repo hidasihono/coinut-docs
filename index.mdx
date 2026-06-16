@@ -9,24 +9,10 @@ Coinut Partner Ramp is the crypto-fiat infrastructure layer built by Coinut, a r
 
 Coinut Partner Ramp lets you offer cryptocurrency services to your customers without building complex blockchain infrastructure or navigating regulatory requirements yourself.
 
-## What You Can Build
-
-<CardGroup cols={3}>
-  <Card title="Onramp" icon="arrow-up-right-from-square">
-    Convert fiat to crypto. Your customers pay with bank transfers or cards, receive cryptocurrency directly to their wallets.
-  </Card>
-  <Card title="Offramp" icon="arrow-down-to-bracket">
-    Convert crypto to fiat. Your customers send cryptocurrency, receive fiat currency via bank transfer.
-  </Card>
-  <Card title="Virtual Accounts" icon="building-columns">
-    Receive fiat payments through dedicated Virtual Account numbers tied to individual customers.
-  </Card>
-</CardGroup>
-
 ## Integration Modes
 
 | Mode | Best For | How It Works |
-|------|----------|-------------|
+| --- | --- | --- |
 | **Autoramp** | Individual customers, consumer apps | Automated KYC, step-by-step flow, customer manages their own verification |
 | **Omnibus** | Enterprise, platforms, marketplaces | Direct API calls, bulk operations, you manage customer aggregation |
 
@@ -34,18 +20,12 @@ Choose Autoramp for faster time-to-market with individual users. Choose Omnibus 
 
 ## Architecture
 
-```
-┌─────────────────────┐      ┌──────────────────────────┐      ┌─────────────────────────┐
-│     Partner App     │ ───▶ │   Coinut Partner Ramp    │ ───▶ │    Banking Network      │
-│     (Your App)      │ ◀─── │           API            │ ◀─── │    + Blockchain         │
-└─────────────────────┘      └──────────────────────────┘      └─────────────────────────┘
-```
 Your application sends signed HTTPS requests to the Coinut Partner Ramp API. We handle the complexity of banking integrations, blockchain transactions, compliance checks, and liquidity management. You receive webhook notifications for every state change.
 
 ## Licensing & Compliance
 
 | Jurisdiction | License / Registration | Authority |
-|-------------|----------------------|-----------|
+| --- | --- | --- |
 | Singapore | Major Payment Institution (IPA) | MAS |
 | Canada | MSB | FINTRAC |
 | Switzerland | VQF Member | FINMA |
@@ -74,23 +54,19 @@ We perform KYC/AML screening, transaction monitoring, and regulatory reporting s
   <Card title="Onramp" icon="arrow-down-to-line" href="onramp-integration">
     Accept fiat into customer virtual accounts and route funds into crypto settlement flows.
   </Card>
+
   <Card title="Offramp" icon="arrow-up-from-line" href="offramp-integration">
     Receive customer crypto and settle fiat to approved bank accounts.
   </Card>
+
   <Card title="Autoramp" icon="repeat-2" href="api-autoramp">
     Automate the full entry-to-exit route with linked VA, crypto address, bank account, deposit, and trade records.
   </Card>
+
   <Card title="Virtual Accounts" icon="landmark" href="virtual-accounts-guide">
     Issue customer-level AUD, EUR, and GBP receiving accounts with PayID and whitelist support where available.
   </Card>
 </CardGroup>
-
-## Integration models
-
-| Model | Use it when | Primary APIs |
-| --- | --- | --- |
-| **Autoramp** | You want Coinut to orchestrate the conversion route after setup | `/autoramp-flow/*`, `/virtual-account/*`, `/deposit-address/*` |
-| **Omnibus** | You manage the customer experience and call each API directly | `/customer/*`, `/bank-account/*`, `/crypto-address/*`, `/deposit/*`, `/trade/*` |
 
 ## Core flow
 
@@ -129,9 +105,11 @@ We perform KYC/AML screening, transaction monitoring, and regulatory reporting s
   <Card title="Quickstart" icon="rocket" href="quickstart">
     Make your first signed request and create a test customer.
   </Card>
+
   <Card title="Authentication" icon="key-round" href="authentication">
     Implement HMAC-SHA256 signing correctly.
   </Card>
+
   <Card title="API Reference" icon="braces" href="api-overview">
     Explore every endpoint from the OpenAPI contract.
   </Card>
