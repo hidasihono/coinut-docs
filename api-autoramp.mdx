@@ -1,0 +1,845 @@
+---
+title: "Autoramp"
+description: "Automated onramp and offramp flows for seamless crypto-fiat conversion."
+---
+
+Autoramp handles the full lifecycle of crypto-fiat conversion:
+
+- **Onramp**: Customer sends fiat → Coinut detects deposit → executes trade → sends crypto to customer address.
+- **Offramp**: Customer sends crypto → Coinut detects deposit → executes trade → sends fiat to bank account.
+
+<Tip>
+Use the dedicated `/autoramp-flow/onramp` and `/autoramp-flow/offramp` endpoints for streamlined flow creation. These automatically create the intermediate resource (virtual account for onramp, deposit address for offramp). Only use `/autoramp-flow/create` when you need full manual control over all flow components.
+</Tip>
+
+---
+
+## Onramp Flow
+
+Customer sends fiat to a virtual account. Coinut detects the deposit, executes the trade, and delivers crypto to the customer's registered crypto address.
+
+```
+Customer Fiat
+     |
+     v
+Virtual Account (auto-created)
+     |
+     v
+Coinut detects deposit
+     |
+     v
+Trade execution (fiat -> crypto)
+     |
+     v
+Crypto sent to customer address
+```
+
+<Steps>
+  <Step title="Create the onramp flow">
+    Call `POST /autoramp-flow/onramp` with the customer's fiat currency and target crypto address.
+  </Step>
+  <Step title="Display deposit instructions">
+    Present the virtual account details to the customer so they can transfer fiat.
+  </Step>
+  <Step title="Monitor via webhook">
+    Receive deposit and trade execution updates via the configured webhook URL.
+  </Step>
+  <Step title="Crypto delivery">
+    After trade execution completes, crypto is automatically sent to the customer's registered address.
+  </Step>
+</Steps>
+
+### Create Onramp Flow
+
+`POST /autoramp-flow/onramp`
+
+Create an onramp flow with automatic virtual account creation.
+
+### Body
+
+<ParamField body="from" type="object" required>
+Source fiat configuration.
+</ParamField>
+
+<ParamField body="from.customerId" type="string" required>
+Customer UUID.
+</ParamField>
+
+<ParamField body="from.currency" type="string" required>
+Fiat currency to deposit. The current nested schema example uses `AUD`; confirm any additional enabled
+corridors with Coinut before hard-coding UI options.
+</ParamField>
+
+<ParamField body="to" type="string" required>
+Target crypto address ID (from `/crypto-address/add`).
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://ramp.hexarails.ai/autoramp-flow/onramp \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}" \
+  -d '{
+    "from": {
+      "customerId": "550e8400-e29b-41d4-a716-446655440000",
+      "currency": "AUD"
+    },
+    "to": "550e8400-e29b-41d4-a716-446655440001"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/onramp", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    from: {
+      customerId: "550e8400-e29b-41d4-a716-446655440000",
+      currency: "AUD",
+    },
+    to: "550e8400-e29b-41d4-a716-446655440001",
+  }),
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://ramp.hexarails.ai/autoramp-flow/onramp",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    json={
+        "from": {
+            "customerId": "550e8400-e29b-41d4-a716-446655440000",
+            "currency": "AUD",
+        },
+        "to": "550e8400-e29b-41d4-a716-446655440001",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/onramp", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    from: {
+      customerId: "550e8400-e29b-41d4-a716-446655440000",
+      currency: "AUD",
+    },
+    to: "550e8400-e29b-41d4-a716-446655440001",
+  }),
+});
+
+const result: {
+  status: string;
+  data: { id: string };
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440004"
+  }
+}
+```
+
+The create response returns the new flow ID only. Follow with `GET /autoramp-flow/detail?id=...` to
+retrieve the complete flow object and the auto-created resource references.
+
+---
+
+## Offramp Flow
+
+Customer sends crypto to a deposit address. Coinut detects the deposit, executes the trade, and delivers fiat to the customer's registered bank account.
+
+```
+Customer Crypto
+     |
+     v
+Deposit Address (auto-created)
+     |
+     v
+Coinut detects deposit
+     |
+     v
+Trade execution (crypto -> fiat)
+     |
+     v
+Fiat sent to bank account
+```
+
+<Steps>
+  <Step title="Create the offramp flow">
+    Call `POST /autoramp-flow/offramp` with the customer's crypto details and target bank account.
+  </Step>
+  <Step title="Display deposit address">
+    Present the deposit address and network to the customer so they can transfer crypto.
+  </Step>
+  <Step title="Monitor via webhook">
+    Receive deposit detection, trade execution, and fiat transfer updates via the configured webhook URL.
+  </Step>
+  <Step title="Fiat delivery">
+    After trade execution completes, fiat is automatically sent to the customer's registered bank account.
+  </Step>
+</Steps>
+
+### Create Offramp Flow
+
+`POST /autoramp-flow/offramp`
+
+Create an offramp flow with automatic deposit address creation.
+
+### Body
+
+<ParamField body="from" type="object" required>
+Source crypto configuration.
+</ParamField>
+
+<ParamField body="from.customerId" type="string" required>
+Customer UUID.
+</ParamField>
+
+<ParamField body="from.currency" type="string" required>
+Crypto currency to deposit: `USDT`.
+</ParamField>
+
+<ParamField body="from.network" type="string" required>
+Blockchain network: `ETH` or `TRX`.
+</ParamField>
+
+<ParamField body="to" type="string" required>
+Target bank account ID (from `/bank-account/add`).
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://ramp.hexarails.ai/autoramp-flow/offramp \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}" \
+  -d '{
+    "from": {
+      "customerId": "550e8400-e29b-41d4-a716-446655440000",
+      "currency": "USDT",
+      "network": "ETH"
+    },
+    "to": "550e8400-e29b-41d4-a716-446655440003"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/offramp", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    from: {
+      customerId: "550e8400-e29b-41d4-a716-446655440000",
+      currency: "USDT",
+      network: "ETH",
+    },
+    to: "550e8400-e29b-41d4-a716-446655440003",
+  }),
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://ramp.hexarails.ai/autoramp-flow/offramp",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    json={
+        "from": {
+            "customerId": "550e8400-e29b-41d4-a716-446655440000",
+            "currency": "USDT",
+            "network": "ETH",
+        },
+        "to": "550e8400-e29b-41d4-a716-446655440003",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/offramp", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    from: {
+      customerId: "550e8400-e29b-41d4-a716-446655440000",
+      currency: "USDT",
+      network: "ETH",
+    },
+    to: "550e8400-e29b-41d4-a716-446655440003",
+  }),
+});
+
+const result: {
+  status: string;
+  data: { id: string };
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440006"
+  }
+}
+```
+
+The create response returns the new flow ID only. Follow with `GET /autoramp-flow/detail?id=...` to
+retrieve the complete flow object and the auto-created deposit-address reference.
+
+---
+
+## Create Flow (Manual)
+
+`POST /autoramp-flow/create`
+
+Manually create a flow when you already have the source and destination resource IDs. Use this when you need full control over which virtual account or deposit address is used.
+
+### Body
+
+<ParamField body="type" type="string" required>
+Flow type: `ONRAMP` or `OFFRAMP`.
+</ParamField>
+
+<ParamField body="from" type="string" required>
+Source resource ID. For onramp: virtual account ID. For offramp: deposit address ID.
+</ParamField>
+
+<ParamField body="to" type="string" required>
+Destination resource ID. For onramp: crypto address ID. For offramp: bank account ID.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://ramp.hexarails.ai/autoramp-flow/create \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}" \
+  -d '{
+    "type": "ONRAMP",
+    "from": "550e8400-e29b-41d4-a716-446655440005",
+    "to": "550e8400-e29b-41d4-a716-446655440001"
+  }'
+```
+
+```javascript JavaScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    type: "ONRAMP",
+    from: "550e8400-e29b-41d4-a716-446655440005",
+    to: "550e8400-e29b-41d4-a716-446655440001",
+  }),
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://ramp.hexarails.ai/autoramp-flow/create",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    json={
+        "type": "ONRAMP",
+        "from": "550e8400-e29b-41d4-a716-446655440005",
+        "to": "550e8400-e29b-41d4-a716-446655440001",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/create", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    type: "ONRAMP",
+    from: "550e8400-e29b-41d4-a716-446655440005",
+    to: "550e8400-e29b-41d4-a716-446655440001",
+  }),
+});
+
+const result: {
+  status: string;
+  data: { id: string };
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440004"
+  }
+}
+```
+
+---
+
+## List Flows
+
+`GET /autoramp-flow/list`
+
+Retrieve a paginated, filterable list of autoramp flows.
+
+### Query Parameters
+
+<ParamField query="pageNum" type="integer" default="1">
+Page number.
+</ParamField>
+
+<ParamField query="pageSize" type="integer" default="10">
+Results per page.
+</ParamField>
+
+<ParamField query="customerId" type="string">
+Filter by customer UUID.
+</ParamField>
+
+<ParamField query="type" type="string">
+Filter by flow type: `ONRAMP`, `OFFRAMP`.
+</ParamField>
+
+<ParamField query="status" type="string">
+Filter by status: `ENABLED`, `DISABLED`.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl "https://ramp.hexarails.ai/autoramp-flow/list?pageNum=1&pageSize=10&customerId=550e8400-e29b-41d4-a716-446655440000" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  pageNum: "1",
+  pageSize: "10",
+  customerId: "550e8400-e29b-41d4-a716-446655440000",
+  type: "ONRAMP",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/autoramp-flow/list?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://ramp.hexarails.ai/autoramp-flow/list",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    params={
+        "pageNum": 1,
+        "pageSize": 10,
+        "customerId": "550e8400-e29b-41d4-a716-446655440000",
+        "type": "ONRAMP",
+    },
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  pageNum: "1",
+  pageSize: "10",
+  customerId: "550e8400-e29b-41d4-a716-446655440000",
+  type: "ONRAMP",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/autoramp-flow/list?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result: {
+  status: string;
+  data: {
+    list: AutorampFlowDto[];
+    total: number;
+    pageNum: number;
+    pageSize: number;
+  };
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "list": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440004",
+        "type": "ONRAMP",
+        "from": "550e8400-e29b-41d4-a716-446655440005",
+        "to": "550e8400-e29b-41d4-a716-446655440001",
+        "status": "ENABLED",
+        "createTime": "2024-01-01T00:00:00Z"
+      }
+    ],
+    "total": 1,
+    "pageNum": 1,
+    "pageSize": 10
+  }
+}
+```
+
+---
+
+## Get Flow Detail
+
+`GET /autoramp-flow/detail`
+
+Retrieve detailed information about a single flow, including nested resource details.
+
+### Query Parameters
+
+<ParamField query="id" type="string" required>
+Flow UUID.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl "https://ramp.hexarails.ai/autoramp-flow/detail?id=550e8400-e29b-41d4-a716-446655440004" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}"
+```
+
+```javascript JavaScript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440004",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/autoramp-flow/detail?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.get(
+    "https://ramp.hexarails.ai/autoramp-flow/detail",
+    headers={
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    params={"id": "550e8400-e29b-41d4-a716-446655440004"},
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const params = new URLSearchParams({
+  id: "550e8400-e29b-41d4-a716-446655440004",
+});
+
+const response = await fetch(
+  `https://ramp.hexarails.ai/autoramp-flow/detail?${params}`,
+  {
+    headers: {
+      "X-API-Key": apiKey,
+      "X-Timestamp": timestamp,
+      "X-Nonce": nonce,
+      "X-Signature": signature,
+    },
+  }
+);
+
+const result: {
+  status: string;
+  data: AutorampFlowDetailDto;
+} = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440004",
+    "type": "ONRAMP",
+    "from": "550e8400-e29b-41d4-a716-446655440005",
+    "to": "550e8400-e29b-41d4-a716-446655440001",
+    "status": "ENABLED",
+    "createTime": "2024-01-01T00:00:00Z",
+    "fromVirtualAccount": {
+      "id": "550e8400-e29b-41d4-a716-446655440005",
+      "customerId": "550e8400-e29b-41d4-a716-446655440000",
+      "currency": "AUD",
+      "accountNo": "123456789",
+      "bsb": "062000",
+      "status": "ACTIVE"
+    },
+    "toCryptoAddress": {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "customerId": "550e8400-e29b-41d4-a716-446655440000",
+      "currency": "USDT",
+      "address": "0x1234567890123456789012345678901234567890",
+      "label": "My Wallet",
+      "network": "ETH"
+    }
+  }
+}
+```
+
+---
+
+## Delete Flow
+
+`POST /autoramp-flow/delete`
+
+Disable and remove an autoramp flow. This stops any future automated processing for this flow.
+
+### Body
+
+<ParamField body="id" type="string" required>
+Flow UUID to delete.
+</ParamField>
+
+### Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://ramp.hexarails.ai/autoramp-flow/delete \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: ${API_KEY}" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "X-Nonce: ${NONCE}" \
+  -H "X-Signature: ${SIGNATURE}" \
+  -d '{"id": "550e8400-e29b-41d4-a716-446655440004"}'
+```
+
+```javascript JavaScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/delete", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    id: "550e8400-e29b-41d4-a716-446655440004",
+  }),
+});
+
+const result = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://ramp.hexarails.ai/autoramp-flow/delete",
+    headers={
+        "Content-Type": "application/json",
+        "X-API-Key": api_key,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    },
+    json={"id": "550e8400-e29b-41d4-a716-446655440004"},
+)
+
+result = response.json()
+```
+
+```typescript TypeScript
+const response = await fetch("https://ramp.hexarails.ai/autoramp-flow/delete", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "X-API-Key": apiKey,
+    "X-Timestamp": timestamp,
+    "X-Nonce": nonce,
+    "X-Signature": signature,
+  },
+  body: JSON.stringify({
+    id: "550e8400-e29b-41d4-a716-446655440004",
+  }),
+});
+
+const result: { status: string } = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+```json
+{
+  "status": "SUCCESS"
+}
+```
+
+---
+
+## Data Model
+
+### AutorampFlowDto
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string (UUID) | Flow identifier. |
+| `type` | string | `ONRAMP` or `OFFRAMP`. |
+| `from` | string (UUID) | Source resource ID (virtual account or deposit address). |
+| `to` | string (UUID) | Destination resource ID (crypto address or bank account). |
+| `status` | string | `ENABLED` or `DISABLED`. |
+| `createTime` | string (ISO 8601) | Flow creation timestamp. |
+
+### AutorampFlowDetailDto
+
+Extends `AutorampFlowDto` with nested resource details:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `fromVirtualAccount` | object | Present for onramp flows. Contains virtual account details. |
+| `fromDepositAddress` | object | Present for offramp flows. Contains deposit address details. |
+| `toCryptoAddress` | object | Present for onramp flows. Contains crypto address details. |
+| `toBankAccount` | object | Present for offramp flows. Contains bank account details. |
