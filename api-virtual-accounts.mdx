@@ -32,11 +32,12 @@ Virtual accounts are fiat-denominated receiving accounts assigned to a customer.
 
 ### Currency-Specific Fields
 
-| Currency | Receiving Methods | Key Fields |
-| --- | --- | --- |
-| **AUD** | BSB \+ Account Number, PayID | `accountNumber`, `bicSwift` (BSB), `payId` |
-| **EUR** | IBAN \+ SWIFT | `accountNumber`, `bicSwift`, `iban` |
-| **GBP** | IBAN \+ SWIFT | `accountNumber`, `bicSwift`, `iban` |
+| Currency | Receiving Methods | Key Fields |  |
+| --- | --- | --- | --- |
+| **AUD** | BSB \+ Account Number, PayID | `accountNumber`, `bicSwift` (BSB), `payId` |  |
+| **EUR** | IBAN \+ SWIFT | `accountNumber`, `bicSwift`, `iban` |  |
+| **GBP** | IBAN \+ SWIFT | `accountNumber`, `bicSwift`, `iban` |  |
+| SGD/ USD | IBAN\+SWIFT | `accountNumber`, `bicSwift`, `iban` |  |
 
 <Note>
   Whitelist functionality is **AUD only**. The schema currently exposes `SGD` and `USD` in addition to `GBP`, `EUR`, and `AUD`, but corridor-specific field availability still needs partner-side operational confirmation before you hard-code downstream UX.

@@ -5,18 +5,12 @@ description: "Make fiat payments directly from your partner balance."
 
 ## Payment Workflow
 
-<Steps>
-  <Step title="Estimate">Call `GET /payment/estimate` to preview the rate, fees, and deducted amount before creating a payment.</Step>
-  <Step title="Create">Call `POST /payment/create` with the payment details. Optionally attach a supporting document.</Step>
-  <Step title="Track">Poll `GET /payment/detail` or wait for webhook notifications to monitor status.</Step>
-</Steps>
-
 ---
 
 ## Payment Statuses
 
 | Status | Description |
-|--------|-------------|
+| --- | --- |
 | `PROCESSING` | Payment is being processed |
 | `CONFIRMED` | Payment completed successfully |
 
@@ -26,10 +20,7 @@ description: "Make fiat payments directly from your partner balance."
 
 Preview the exchange rate and fees before creating a payment.
 
-<ParamField query="deductCurrency" type="string" required>Currency to deduct from partner balance (e.g. USDT)</ParamField>
-<ParamField query="amount" type="string" required>Payment amount in target currency</ParamField>
-<ParamField query="currency" type="string" required>Target fiat currency (e.g. USD)</ParamField>
-<ParamField query="bankAccountId" type="string" required>Recipient bank account UUID</ParamField>
+   
 
 ### Request
 
@@ -142,16 +133,10 @@ Initiate a fiat payment from your partner balance.
 </Warning>
 
 <Note>
-  The latest contract defines this endpoint as `multipart/form-data`. The `supportingDocument` field is optional.
-  Attach an invoice, purchase order, or compliance document when required.
+  The latest contract defines this endpoint as `multipart/form-data`. The `supportingDocument` field is optional. Attach an invoice, purchase order, or compliance document when required.
 </Note>
 
-<ParamField body="deductCurrency" type="string" required>Currency to deduct (e.g. USDT)</ParamField>
-<ParamField body="amount" type="string" required>Payment amount in target currency</ParamField>
-<ParamField body="currency" type="string" required>Target fiat currency (e.g. USD)</ParamField>
-<ParamField body="bankAccountId" type="string" required>Recipient bank account UUID</ParamField>
-<ParamField body="reference" type="string" required>Payment reference for reconciliation</ParamField>
-<ParamField body="supportingDocument" type="file" optional>Attachment file (PDF, image, or document)</ParamField>
+     
 
 ### Request
 
@@ -277,8 +262,6 @@ const data = await response.json();
 
 Retrieve full details for a single payment.
 
-<ParamField query="id" type="string" required>Payment UUID</ParamField>
-
 ### Request
 
 <CodeGroup>
@@ -386,10 +369,7 @@ const data = await response.json();
 
 Retrieve a paginated list of payments.
 
-<ParamField query="pageNum" type="number" default="1">Page number</ParamField>
-<ParamField query="pageSize" type="number" default="10">Items per page</ParamField>
-<ParamField query="status" type="string" optional>Filter by status: `PROCESSING`, `CONFIRMED`</ParamField>
-<ParamField query="currency" type="string" optional>Filter by received currency</ParamField>
+   
 
 ### Request
 
@@ -504,7 +484,7 @@ const data = await response.json();
 ### GetPaymentDetailDataDto
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `id` | `string` | Payment UUID |
 | `status` | `string` | `PROCESSING` or `CONFIRMED` |
 | `rate` | `string` | Exchange rate applied |
@@ -520,7 +500,7 @@ const data = await response.json();
 ### PaymentDetailBankAccountDto
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `bankName` | `string` | Bank name |
 | `accountNo` | `string` | Account number |
 | `bankCountry` | `string` | Bank country code |

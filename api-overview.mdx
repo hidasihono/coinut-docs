@@ -6,16 +6,9 @@ description: "Base URLs, authentication, conventions, and patterns for the Coinu
 ## Base URLs
 
 | Environment | Base URL |
-|-------------|----------|
-| Production  | `https://ramp.hexarails.ai` |
-| Sandbox     | `https://ramp-sandbox.hexarails.ai` |
-
-Use the Sandbox environment for development and integration testing. All sandbox balances and transactions are simulated.
-
-<Warning>
-  Connectivity to these hosts may be gated by partner IP allowlisting. If you receive `403` with
-  `error code: 1010`, the request was blocked before application-layer auth or validation ran.
-</Warning>
+| --- | --- |
+| Production | `https://ramp.hexarails.ai` |
+| Sandbox | `https://ramp-sandbox.hexarails.ai` |
 
 ## Authentication
 
@@ -24,7 +17,7 @@ Every request must be authenticated using **HMAC-SHA256** request signing. You r
 ### Required Headers
 
 | Header | Description |
-|--------|-------------|
+| --- | --- |
 | `X-API-Key` | Your API key |
 | `X-Timestamp` | Unix timestamp in seconds |
 | `X-Nonce` | A unique random string for each request |
@@ -45,15 +38,11 @@ NONCE
 ```
 
 <Note>
-  Use the exact host from the environment you call, keep query parameters in their original order,
-  and use an empty body hash for `GET` and `multipart/form-data` requests. See the
-  [Authentication](authentication) page for the full language examples.
+  Use the exact host from the environment you call, keep query parameters in their original order, and use an empty body hash for `GET` and `multipart/form-data` requests. See the [Authentication](authentication) page for the full language examples.
 </Note>
 
 <Note>
-  The current OpenAPI file still lists `api_secret` as a security scheme. The narrative integration
-  contract uses the secret as the HMAC signing key, not as a request header. Keep your implementation
-  aligned with the signed-header flow shown here unless Coinut gives you an environment-specific override.
+  The current OpenAPI file still lists `api_secret` as a security scheme. The narrative integration contract uses the secret as the HMAC signing key, not as a request header. Keep your implementation aligned with the signed-header flow shown here unless Coinut gives you an environment-specific override.
 </Note>
 
 <Warning>
@@ -63,6 +52,7 @@ NONCE
 ### Authenticated Request Example
 
 <CodeGroup>
+
 ```bash cURL
 API_KEY="your_api_key"
 API_SECRET="your_api_secret"
@@ -218,6 +208,7 @@ async function authedRequest<T>(
 // Usage
 authedRequest('GET', '/balance').then(console.log);
 ```
+
 </CodeGroup>
 
 ## Request & Response Format
@@ -247,27 +238,20 @@ authedRequest('GET', '/balance').then(console.log);
 ## HTTP Status Codes
 
 | Code | Meaning |
-|------|---------|
+| --- | --- |
 | `200` | Request succeeded. |
 | `403` | Infrastructure access control blocked the request before application auth. |
 | `422` | Contract-defined application or validation error. |
-
-<Note>
-  The latest contract documents `200` and `422` at the API layer. Live testing on June 16, 2026 also
-  observed infrastructure-level `403 error code: 1010` for signed requests from a non-allowlisted IP,
-  and an unauthenticated `/health` response that returned HTTP `200` with an `UNAUTHORISED` body.
-  Handle infrastructure and application responses separately in your client.
-</Note>
 
 ## Pagination
 
 List endpoints return paginated results using these fields:
 
 | Field | Type | Description |
-|-------|------|-------------|
+| --- | --- | --- |
 | `pageNum` | integer | Current page number (1-based) |
-| `pageSize`| integer | Items per page |
-| `total`   | integer | Total matching records |
+| `pageSize` | integer | Items per page |
+| `total` | integer | Total matching records |
 
 ### Example Paginated Response
 
@@ -288,17 +272,17 @@ Pass `pageNum` and `pageSize` as query parameters on list endpoints. `pageSize` 
 ## API Categories
 
 | Category | Description | Endpoints |
-|----------|-------------|-----------|
-| **Common** | Balance, configuration, health, webhook settings | [`/health`](api-common#get-health) [`/balance`](api-common#get-balance) [`/callback-url`](api-common#get-callback-url) |
-| **Customers** | Customer onboarding and KYC verification | [`POST /customer/create`](api-customers#post-customercreate) [`GET /customer/detail`](api-customers#get-customerdetail) [`GET /customer/list`](api-customers#get-customerlist) |
-| **Virtual Accounts** | Fiat virtual accounts for receiving payments | [`POST /virtual-account/create`](api-virtual-accounts#post-virtual-accountcreate) [`GET /virtual-account/list`](api-virtual-accounts#get-virtual-accountlist) [`GET /virtual-account/detail`](api-virtual-accounts#get-virtual-accountdetail) |
-| **Crypto Addresses** | Destination wallet addresses for payouts | `POST /crypto-address/add` `GET /crypto-address/list` `GET /crypto-address/detail` |
-| **Deposit Addresses** | Source crypto addresses for customer deposits | `POST /deposit-address/create` `GET /deposit-address/list` |
-| **Bank Accounts** | Customer bank accounts for fiat payouts | `POST /bank-account/add` `GET /bank-account/list` `GET /bank-account/detail` |
-| **Autoramp** | Automated onramp and offramp flows | `POST /autoramp-flow/create` `GET /autoramp-flow/list` |
-| **Deposits** | Deposit transaction monitoring | `GET /deposit/list` `GET /deposit/detail` |
-| **Trades** | OTC trade records and history | `GET /trade/list` `GET /trade/detail` |
-| **Payments** | Direct fiat payments to beneficiaries | `POST /payment/create` `GET /payment/list` |
+| --- | --- | --- |
+| **Common** | Balance, configuration, health, webhook settings | `[/health](api-common#get-health)[/balance](api-common#get-balance)[/callback-url](api-common#get-callback-url)` |
+| **Customers** | Customer onboarding and KYC verification | `[POST /customer/create](api-customers#post-customercreate)[GET /customer/detail](api-customers#get-customerdetail)[GET /customer/list](api-customers#get-customerlist)` |
+| **Virtual Accounts** | Fiat virtual accounts for receiving payments | `[POST /virtual-account/create](api-virtual-accounts#post-virtual-accountcreate)[GET /virtual-account/list](api-virtual-accounts#get-virtual-accountlist)[GET /virtual-account/detail](api-virtual-accounts#get-virtual-accountdetail)` |
+| **Crypto Addresses** | Destination wallet addresses for payouts | `POST /crypto-address/addGET /crypto-address/listGET /crypto-address/detail` |
+| **Deposit Addresses** | Source crypto addresses for customer deposits | `POST /deposit-address/createGET /deposit-address/list` |
+| **Bank Accounts** | Customer bank accounts for fiat payouts | `POST /bank-account/addGET /bank-account/listGET /bank-account/detail` |
+| **Autoramp** | Automated onramp and offramp flows | `POST /autoramp-flow/createGET /autoramp-flow/list` |
+| **Deposits** | Deposit transaction monitoring | `GET /deposit/listGET /deposit/detail` |
+| **Trades** | OTC trade records and history | `GET /trade/listGET /trade/detail` |
+| **Payments** | Direct fiat payments to beneficiaries | `POST /payment/createGET /payment/list` |
 
 ## Rate Limiting
 

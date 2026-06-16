@@ -115,10 +115,6 @@ Before starting an offramp flow, ensure:
 | AUD | `bankName`, `accountNo`, `bsb` | `accountName` | 1 business day |
 | SGD | `bankName`, `accountNo`, `aba` OR `swift` | `accountName`, `bankAddress` | 1 business day |
 
-<Note>
-  Always include `accountName` when available. Some banks require an exact name match for compliance.
-</Note>
-
 ## Complete Code Example
 
 <CodeGroup>
@@ -198,8 +194,8 @@ def create_offramp_flow(customer_id: str, network: str, bank_account_id: str):
     return coinut_request("POST", "/autoramp-flow/offramp", {
         "from": {
             "customerId": customer_id,
-            "currency": "USDT",
-            "network": network,  # "ETH" or "TRX"
+            "currency": "USDT", # "USDT" or "USDC"
+            "network": network,  # "ETH","MATIC" or "TRX"
         },
         "to": bank_account_id,
     })

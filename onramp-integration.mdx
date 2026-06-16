@@ -88,18 +88,6 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     Generate a QR code for PayID to simplify mobile banking transfers.
   </Step>
-  <Step title="Display VA to Customer">
-    Show the virtual account details in your UI:
-
-    - **AUD**: Display PayID (e.g., `john.doe@example.com`) and BSB \+ Account Number
-    - **EUR**: Display IBAN and SWIFT/BIC
-    - **GBP**: Display IBAN and Sort Code
-    - **USD**: Display IBAN and Sort Code
-    - **SGD**: Display IBAN and Sort Code
-    - **other currencies** : Contact Coinut support for the exact banking fields
-
-    Generate a QR code for PayID to simplify mobile banking transfers.
-  </Step>
   <Step title="Monitor Deposits">
     Listen for webhooks:
 
@@ -197,7 +185,7 @@ async function createCustomer(name, email, externalId) {
 async function createVirtualAccount(customerId, currency) {
   const { data } = await coinutRequest('POST', '/virtual-account/create', {
     customerId,
-    currency, // 'AUD', 'EUR', or 'GBP'
+    currency, // 'AUD', 'EUR', 'SGD','USD' or 'GBP',etc
   });
   return data;
 }
@@ -206,10 +194,10 @@ async function createVirtualAccount(customerId, currency) {
 async function addCryptoAddress(customerId, address, network) {
   const { data } = await coinutRequest('POST', '/crypto-address/add', {
     customerId,
-    currency: 'USDT',
+    currency: 'USDT', // 'USDT','USDC'
     address,
     label: 'Customer Wallet',
-    network, // 'ETH' or 'TRX'
+    network, // 'ETH' .'TRX' or 'MATIC'
   });
   return data.cryptoAddressId;
 }

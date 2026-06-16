@@ -4,7 +4,7 @@ description: "Add and manage customer crypto destination addresses for onramp fl
 ---
 
 <Note>
-Crypto addresses are **destination addresses** — the blockchain addresses where funds are sent **to** the customer after an onramp trade executes.
+  Crypto addresses are **destination addresses** — the blockchain addresses where funds are sent **to** the customer after an onramp trade executes.
 </Note>
 
 ---
@@ -18,28 +18,29 @@ Register a customer's crypto withdrawal address. Used as the destination in onra
 ### Body
 
 <ParamField body="customerId" type="string" required>
-Customer UUID.
+  Customer UUID.
 </ParamField>
 
 <ParamField body="currency" type="string" required>
-Crypto currency code. The public examples use `USDT`; confirm any additional enabled assets with Coinut before hard-coding them in production.
+  Crypto currency code. The public examples use `USDT`; confirm any additional enabled assets with Coinut before hard-coding them in production.
 </ParamField>
 
 <ParamField body="address" type="string" required>
-Blockchain address.
+  Blockchain address.
 </ParamField>
 
 <ParamField body="label" type="string" required>
-Friendly display name for this address.
+  Friendly display name for this address.
 </ParamField>
 
 <ParamField body="network" type="string">
-Blockchain network (e.g. `ETH`, `TRX`). Required for multi-chain currencies like USDT.
+  Blockchain network (e.g. `ETH`, `TRX`). Required for multi-chain currencies like USDT.
 </ParamField>
 
 ### Request
 
 <CodeGroup>
+
 ```bash curl
 curl -X POST https://ramp.hexarails.ai/crypto-address/add \
   -H "Content-Type: application/json" \
@@ -126,16 +127,17 @@ const result: {
   data: { id: string };
 } = await response.json();
 ```
+
 </CodeGroup>
 
 ### Response
 
 <ResponseField name="status" type="string">
-Always `"SUCCESS"` on success.
+  Always `"SUCCESS"` on success.
 </ResponseField>
 
 <ResponseField name="data.id" type="string">
-The ID of the newly created crypto address.
+  The ID of the newly created crypto address.
 </ResponseField>
 
 ```json
@@ -148,8 +150,7 @@ The ID of the newly created crypto address.
 ```
 
 <Tip>
-The create response returns the new resource ID only. Use `GET /crypto-address/detail?id=...` if you
-need the full stored address record immediately after creation.
+  The create response returns the new resource ID only. Use `GET /crypto-address/detail?id=...` if you need the full stored address record immediately after creation.
 </Tip>
 
 ---
@@ -162,21 +163,22 @@ Retrieve a paginated list of registered crypto addresses.
 
 ### Query Parameters
 
-<ParamField query="pageNum" type="integer" default="1">
-Page number (1-indexed).
+<ParamField query="pageNum" default="1" type="integer">
+  Page number (1-indexed).
 </ParamField>
 
-<ParamField query="pageSize" type="integer" default="10">
-Number of results per page.
+<ParamField query="pageSize" default="10" type="integer">
+  Number of results per page.
 </ParamField>
 
 <ParamField query="customerId" type="string">
-Filter by customer UUID.
+  Filter by customer UUID.
 </ParamField>
 
 ### Request
 
 <CodeGroup>
+
 ```bash curl
 curl "https://ramp.hexarails.ai/crypto-address/list?pageNum=1&pageSize=10&customerId=550e8400-e29b-41d4-a716-446655440000" \
   -H "X-API-Key: ${API_KEY}" \
@@ -257,16 +259,17 @@ const result: {
   };
 } = await response.json();
 ```
+
 </CodeGroup>
 
 ### Response
 
 <ResponseField name="data.list" type="array">
-Array of `CryptoAddressDetailDto` objects.
+  Array of `CryptoAddressDetailDto` objects.
 </ResponseField>
 
 <ResponseField name="data.total" type="integer">
-Total number of matching records.
+  Total number of matching records.
 </ResponseField>
 
 ```json
@@ -303,12 +306,13 @@ Retrieve a single crypto address by ID.
 ### Query Parameters
 
 <ParamField query="id" type="string" required>
-Crypto address UUID.
+  Crypto address UUID.
 </ParamField>
 
 ### Request
 
 <CodeGroup>
+
 ```bash curl
 curl "https://ramp.hexarails.ai/crypto-address/detail?id=550e8400-e29b-41d4-a716-446655440001" \
   -H "X-API-Key: ${API_KEY}" \
@@ -376,6 +380,7 @@ const result: {
   data: CryptoAddressDetailDto;
 } = await response.json();
 ```
+
 </CodeGroup>
 
 ### Response
@@ -402,13 +407,13 @@ const result: {
 
 ### CryptoAddressDetailDto
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string (UUID) | Unique address record identifier. |
-| `customerId` | string (UUID) | Associated customer. |
-| `currency` | string | Crypto currency code. The current public examples focus on `USDT`; the live Swagger also exposes `USDC` in list filters. |
-| `address` | string | Blockchain address. |
-| `label` | string | Friendly display name. |
-| `network` | string | Blockchain network (e.g. `ETH`, `TRX`). |
-| `createTime` | string (ISO 8601) | Record creation timestamp. |
-| `updateTime` | string (ISO 8601) | Last update timestamp. |
+| Field | Type | Description |  |
+| --- | --- | --- | --- |
+| `id` | string (UUID) | Unique address record identifier. |  |
+| `customerId` | string (UUID) | Associated customer. |  |
+| `currency` | string |  | Crypto currency code. The current public examples focus on `USDT`,`USDC` in list filters. |
+| `address` | string | Blockchain address. |  |
+| `label` | string | Friendly display name. |  |
+| `network` | string | Blockchain network (e.g. `ETH`, `TRX,MATIC`). |  |
+| `createTime` | string (ISO 8601) | Record creation timestamp. |  |
+| `updateTime` | string (ISO 8601) | Last update timestamp. |  |
