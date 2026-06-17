@@ -9,11 +9,11 @@
     "dark": "#020617"
   },
 
-  "favicon": "images/favicon.svg",
+  "favicon": "images/favicon.ico",
 
   "logo": {
-    "light": "images/logo-light.svg",
-    "dark": "images/logo-dark.svg"
+    "light": "images/logo-light.png",
+    "dark": "images/logo-dark.png"
   },
 
   "navigation": {
@@ -157,9 +157,9 @@
 
   "footer": {
     "socials": {
-      "twitter": "https://twitter.com/coinut",
+      "twitter": "https://x.com/coinut_official",
       "github": "https://github.com/coinut",
-      "linkedin": "https://linkedin.com/company/coinut"
+      "linkedin": "https://www.linkedin.com/company/coinut/"
     }
   }
 }
