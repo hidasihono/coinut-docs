@@ -16,12 +16,14 @@ A Virtual Account provides a unique set of banking details for each customer:
 
 ## Supported Currencies
 
+There's a single `bicSwift` field on the detail response for every currency — it carries the BSB number for AUD and the SWIFT/BIC code for everything else. There's no separate `bsb` or `swift` field, and no `sortCode` field.
+
 | Currency | Account Format | Key Fields | Geographic Focus |
 | --- | --- | --- | --- |
-| AUD | BSB \+ Account Number | `payId`, `bsb`, `accountNumber` | Australia |
-| EUR | IBAN | `iban`, `swift` | Europe |
-| GBP | IBAN / Sort Code | `iban`, `swift` | United Kingdom |
-| SGD / USD | Corridor-specific | Confirm exact receiving fields with Coinut before shipping UX | Enabled in the current create schema but not fully described in narrative guides |
+| AUD | BSB \+ Account Number | `payId`, `bicSwift` (BSB), `accountNumber` | Australia |
+| EUR | IBAN | `iban`, `bicSwift` (SWIFT/BIC) | Europe |
+| GBP | IBAN | `iban`, `bicSwift` (SWIFT/BIC) | United Kingdom |
+| SGD / USD | IBAN | `iban`, `bicSwift` (SWIFT/BIC) | Enabled in the current create schema; confirm corridor-specific receiving details with Coinut before shipping UX |
 
 ## VA Lifecycle
 
@@ -42,7 +44,7 @@ A VA starts in `PENDING` status after creation. Once compliance review completes
 </ParamField>
 
 <ParamField body="whitelist" type="object">
-  For AUD only. Pre-registers one allowed sender bank account during VA creation. Uses `bsbNumber`, `accountNumber`, and optional `accountName`.
+  Intended for AUD only — pre-registers one allowed sender bank account during VA creation. Uses `bsbNumber`, `accountNumber`, and `accountName` (despite being marked optional in the schema, `accountName` is currently required by validation; omitting it will fail the request). Note: unlike the dedicated whitelist endpoints below, VA creation does not currently reject a `whitelist` object submitted for a non-AUD currency — stick to AUD until that's tightened up.
 </ParamField>
 
 ```bash
@@ -61,12 +63,16 @@ POST /virtual-account/create
 }
 ```
 
+<Note>
+  `POST /virtual-account/create` itself only returns the new VA's `id`. The fields below come from `GET /virtual-account/detail`, which you should call immediately after creation to get the banking details.
+</Note>
+
 <ResponseField name="payId" type="string">
   PayID address for AUD accounts (e.g., `john.doe@example.com`)
 </ResponseField>
 
-<ResponseField name="bsb" type="string">
-  BSB code for AUD accounts (e.g., `062000`)
+<ResponseField name="bicSwift" type="string">
+  BSB code for AUD accounts (e.g., `062000`), or the SWIFT/BIC code for EUR, GBP, SGD, and USD accounts. This is a single field — there's no separate `bsb` or `swift` field.
 </ResponseField>
 
 <ResponseField name="accountNumber" type="string">
@@ -74,11 +80,7 @@ POST /virtual-account/create
 </ResponseField>
 
 <ResponseField name="iban" type="string">
-  IBAN for EUR and GBP accounts
-</ResponseField>
-
-<ResponseField name="swift" type="string">
-  SWIFT/BIC code for EUR and GBP accounts
+  IBAN for EUR, GBP, SGD, and USD accounts
 </ResponseField>
 
 ## AUD Virtual Accounts & PayID
@@ -117,8 +119,11 @@ SWIFT/BIC: COINUTDEFF
 ```text
 IBAN: GB29NWBK60161331926819
 SWIFT/BIC: COINUTGB2L
-Sort Code: 60-16-13 (if applicable)
 ```
+
+<Note>
+  There's no separate `sortCode` field — only `iban` and `bicSwift` are returned for GBP accounts.
+</Note>
 
 - Supports Faster Payments (near-instant, up to GBP 1M)
 - Supports BACS (3 business days)
@@ -138,7 +143,7 @@ AUD virtual accounts support a whitelist that restricts which bank accounts can 
 
 ```json
 {
-  "vaId": "va_123",
+  "id": "va_123",
   "sourceAccount": {
     "bsbNumber": "062000",
     "accountNumber": "12345678",
@@ -147,7 +152,15 @@ AUD virtual accounts support a whitelist that restricts which bank accounts can 
 }
 ```
 
+<Warning>
+  The virtual account identifier field is `id`, not `vaId` — submitting `vaId` will fail validation since `id` is required.
+</Warning>
+
 When a whitelist is active, deposits from non-whitelisted accounts may be rejected or held for manual review.
+
+<Note>
+  `POST /virtual-account/create-aud-whitelist` and `.../update-aud-whitelist` return their `data` as an **array** of whitelist entries, matching `GET /virtual-account/get-aud-whitelist` — not a single object. `sourceAccount.id` is technically optional on update, but omitting it sends `0` as the entry identifier, so always include it once you have it.
+</Note>
 
 ## Best Practices
 

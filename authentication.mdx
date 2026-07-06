@@ -5,7 +5,7 @@ description: "How to authenticate with Coinut Partner Ramp APIs using HMAC-SHA25
 
 ## Overview
 
-Every request to the Coinut Partner Ramp API must be cryptographically signed using **HMAC-SHA256**. The server verifies the signature against your **API Secret** stored on the Coinut side. Requests without a valid signature are rejected with `401 Unauthorized` or `422 Unprocessable Entity`.
+Every request to the Coinut Partner Ramp API must be cryptographically signed using **HMAC-SHA256**. The server verifies the signature against your **API Secret** stored on the Coinut side. Requests with a missing, malformed, or invalid signature (or an unrecognized API key) are rejected with `401 Unauthorized`.
 
 ## Required Headers
 
@@ -288,8 +288,8 @@ curl https://ramp-sandbox.hexarails.ai/balance \
 
 | Status Code | Meaning | Resolution |
 | --- | --- | --- |
-| `422` | Invalid parameters, authentication failure, or failed operation | Verify the canonical string, headers, and request body |
-| `401` | Possible gateway or middleware authentication failure | Handle defensively even though the latest contract primarily documents `422` |
+| `401` | Missing header, unrecognized API key, expired/incorrectly-formatted timestamp, or signature mismatch | Rebuild the canonical string exactly as shown above and re-check each header value |
+| `422` | Request was authenticated but the body/query failed validation, or a downstream operation failed | Compare the request against the endpoint's schema in the API Reference |
 
 ## IP Whitelisting
 
@@ -321,7 +321,11 @@ curl -X POST https://ramp-sandbox.hexarails.ai/ip-white-list \
 
 | Field | Required | Description |
 | --- | --- | --- |
-| `ipWhiteList` | Yes | Array of IP addresses. Empty array `[]` means **no restriction**. |
+| `ipWhiteList` | Yes | Array of IP addresses, **maximum 6 entries**. Empty array `[]` means **no restriction**. |
+
+<Note>
+  Submitting more than 6 IP addresses is rejected with a `422` error (`Only 6 IP addresses are allowed`). If you operate more than 6 egress IPs, front them with a NAT gateway or reverse proxy and whitelist that single address instead.
+</Note>
 
 ## Best Practices
 
@@ -358,13 +362,15 @@ The `X-Timestamp` must be a **Unix timestamp in seconds** (not milliseconds or m
 
 ### Rotate Secrets Regularly
 
-1. Generate a new key pair from the partner dashboard
-2. Update your server environment with the new secret
-3. Test the new credentials in sandbox
-4. Revoke the old key pair
+Each partner has exactly **one** active API key/secret pair — there is no overlap window. Issuing a new pair immediately invalidates the old one, so plan rotation as a cutover, not a gradual migration:
 
-<Note>
-  You can have multiple active key pairs during rotation. Revoke the old key only after confirming the new one works in production.
-</Note>
+1. Generate a new key pair from the partner dashboard
+2. Fully test the new credentials against sandbox with a build that isn't serving production traffic yet
+3. Schedule a short maintenance window and deploy the new key/secret to all production instances at once
+4. Confirm production traffic is signing successfully with the new pair
+
+<Warning>
+  Because only one key pair can be active at a time, any request signed with the old secret will start failing with `401 Unauthorized` the moment the new pair is saved — including in-flight requests from instances that haven't picked up the new secret yet. Roll out the new secret to every instance as close to simultaneously as your deployment tooling allows.
+</Warning>
 
 ## 

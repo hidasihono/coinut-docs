@@ -8,12 +8,13 @@ description: "Base URLs, authentication, conventions, and patterns for the Coinu
 | Environment | Base URL |
 | --- | --- |
 | Sandbox | `https://ramp-sandbox.hexarails.ai` |
+| Production | `https://ramp.hexarails.ai` |
 
 ## Authentication
 
 Every request must be authenticated using **HMAC-SHA256** request signing. You receive an API key and secret during partner onboarding.
 
-### Required Headers Testing
+### Required Headers
 
 | Header | Description |
 | --- | --- |
@@ -44,9 +45,9 @@ NONCE
   The current OpenAPI file still lists `api_secret` as a security scheme. The narrative integration contract uses the secret as the HMAC signing key, not as a request header. Keep your implementation aligned with the signed-header flow shown here unless Coinut gives you an environment-specific override.
 </Note>
 
-<Warning>
-  Requests with timestamps older than 60 seconds are rejected. Sync your server clock with NTP.
-</Warning>
+<Note>
+  `X-Timestamp` is included in the signed canonical string but is **not currently checked against server time** — there is no replay-window enforcement today. Keep your server clock accurate with NTP anyway: it's required for audit trails, and a staleness check may be added in the future without notice.
+</Note>
 
 ### Authenticated Request Example
 
@@ -238,9 +239,10 @@ authedRequest('GET', '/balance').then(console.log);
 
 | Code | Meaning |
 | --- | --- |
-| `200` | Request succeeded. |
+| `200` | Request succeeded. A small set of legacy endpoints (see [Errors](errors)) return `200` even on failure — check the JSON `status` field on those routes. |
+| `401` | Authentication failed — missing/invalid signature, API key, timestamp, or nonce. See [Authentication](authentication). |
 | `403` | Infrastructure access control blocked the request before application auth. |
-| `422` | Contract-defined application or validation error. |
+| `422` | Request was authenticated but invalid, or a downstream operation failed. |
 
 ## Pagination
 
@@ -272,21 +274,19 @@ Pass `pageNum` and `pageSize` as query parameters on list endpoints. `pageSize` 
 
 | Category | Description | Endpoints |
 | --- | --- | --- |
-| **Common** | Balance, configuration, health, webhook settings | `[/health](api-common#get-health)[/balance](api-common#get-balance)[/callback-url](api-common#get-callback-url)` |
-| **Customers** | Customer onboarding and KYC verification | `[POST /customer/create](api-customers#post-customercreate)[GET /customer/detail](api-customers#get-customerdetail)[GET /customer/list](api-customers#get-customerlist)` |
-| **Virtual Accounts** | Fiat virtual accounts for receiving payments | `[POST /virtual-account/create](api-virtual-accounts#post-virtual-accountcreate)[GET /virtual-account/list](api-virtual-accounts#get-virtual-accountlist)[GET /virtual-account/detail](api-virtual-accounts#get-virtual-accountdetail)` |
-| **Crypto Addresses** | Destination wallet addresses for payouts | `POST /crypto-address/addGET /crypto-address/listGET /crypto-address/detail` |
-| **Deposit Addresses** | Source crypto addresses for customer deposits | `POST /deposit-address/createGET /deposit-address/list` |
-| **Bank Accounts** | Customer bank accounts for fiat payouts | `POST /bank-account/addGET /bank-account/listGET /bank-account/detail` |
-| **Autoramp** | Automated onramp and offramp flows | `POST /autoramp-flow/createGET /autoramp-flow/list` |
-| **Deposits** | Deposit transaction monitoring | `GET /deposit/listGET /deposit/detail` |
-| **Trades** | OTC trade records and history | `GET /trade/listGET /trade/detail` |
-| **Payments** | Direct fiat payments to beneficiaries | `POST /payment/createGET /payment/list` |
+| **Common** | Balance, configuration, health, webhook settings | [`GET /health`](api/common-health) · [`GET /balance`](api/common-balance) · [`GET /callback-url`](api/common-callback-url-get) |
+| **Customers** | Customer onboarding and KYC verification | [`POST /customer/create`](api/customer-create) · [`GET /customer/detail`](api/customer-detail) · [`GET /customer/list`](api/customer-list) |
+| **Virtual Accounts** | Fiat virtual accounts for receiving payments | [`POST /virtual-account/create`](api/virtual-account-create) · [`GET /virtual-account/list`](api/virtual-account-list) · [`GET /virtual-account/detail`](api/virtual-account-detail) |
+| **Crypto Addresses** | Destination wallet addresses for payouts | [`POST /crypto-address/add`](api/crypto-address-add) · [`GET /crypto-address/list`](api/crypto-address-list) · [`GET /crypto-address/detail`](api/crypto-address-detail) |
+| **Deposit Addresses** | Source crypto addresses for customer deposits | [`POST /deposit-address/create`](api/deposit-address-create) · [`GET /deposit-address/list`](api/deposit-address-list) |
+| **Bank Accounts** | Customer bank accounts for fiat payouts | [`POST /bank-account/add`](api/bank-account-add) · [`GET /bank-account/list`](api/bank-account-list) · [`GET /bank-account/detail`](api/bank-account-detail) |
+| **Autoramp** | Automated onramp and offramp flows | [`POST /autoramp-flow/create`](api/autoramp-create) · [`GET /autoramp-flow/list`](api/autoramp-list) |
+| **Deposits** | Deposit transaction monitoring | [`GET /deposit/list`](api/deposit-list) · [`GET /deposit/detail`](api/deposit-detail) |
+| **Trades** | OTC trade records and history | [`GET /trade/list`](api/trade-list) · [`GET /trade/detail`](api/trade-detail) |
+| **Payments** | Direct fiat payments to beneficiaries | [`POST /payment/create`](api/payment-create) · [`GET /payment/list`](api/payment-list) |
 
 ## Rate Limiting
 
-<Warning>
-  Rate limits apply per API key. Exceeding the limit returns HTTP 429. Default limits are **100 requests per minute** per key. Contact support to raise your limit.
-</Warning>
-
-If you hit a 429, wait for the `Retry-After` header (seconds) before retrying. Use exponential backoff with jitter in your client.
+<Note>
+  The Partner Ramp application itself does not implement per-key rate limiting, a `429` response, or a `Retry-After` header today — any throttling in front of the API would be enforced at the infrastructure/gateway level, outside this service. Don't build client logic that depends on a specific limit or on receiving `429`; contact support if you're planning a high-volume integration so current infrastructure limits can be confirmed for your account.
+</Note>

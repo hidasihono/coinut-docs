@@ -14,6 +14,10 @@ Coinut APIs return JSON envelopes for both success and errors.
 }
 ```
 
+<Note>
+  The legacy `/create-va` endpoint is a narrow exception: it returns its data object directly (identifiable by a `va_id` field), without the `{status, data}` wrapper. Every other endpoint follows the envelope above.
+</Note>
+
 ## Error envelope
 
 ```json
@@ -25,39 +29,48 @@ Coinut APIs return JSON envelopes for both success and errors.
 
 ## HTTP status model
 
+The API only ever returns three HTTP status codes. There is no `429` or `500` — every failure, including internal/downstream errors, is reported as `422` with a `status`/`message` body instead of a 5xx.
+
 | HTTP status | Meaning |
 | --- | --- |
-| `200` | Request succeeded |
-| `401` | Authentication failed |
-| `422` | Request was authenticated but invalid or could not be processed |
-| `429` | Rate limit exceeded |
-| `500` | Temporary server error |
+| `200` | Request succeeded — or, on a small set of legacy endpoints, failed (see below) |
+| `401` | Authentication failed (bad/missing signature, API key, timestamp, or nonce) |
+| `422` | Request was authenticated but invalid, or a downstream operation failed |
+
+<Warning>
+  A handful of legacy endpoints — `/create-va`, `/create-whitelist`, `/update-whitelist`, `/get-whitelist`, `/create-user`, `/get-user`, `/health` — always respond with HTTP `200`, **even on failure**. On these routes, check the JSON `status` field rather than the HTTP status code to detect errors.
+</Warning>
 
 ## Common error statuses
 
 | Status | Meaning | Recommended action |
 | --- | --- | --- |
 | `INVALID_PARAMETERS` | Missing or invalid parameter | Compare request against the API Reference schema |
-| `UNAUTHORISED` | Signature, key, timestamp, or nonce is invalid | Rebuild the canonical string and verify server clock |
+| `UNAUTHORISED` | Signature, key, timestamp, or nonce is invalid | Rebuild the canonical string and verify header values |
 | `FAILED` | Internal or downstream processing failure | Retry only when the operation is safe to retry |
 
 ## Retry guidance
 
-Retry transient `429` and `500` responses with exponential backoff. Do not automatically retry money-moving `POST` requests unless your integration has an idempotency strategy and has checked the current object state.
+Because the API doesn't emit `429` or `500`, an HTTP-status-based retry loop has nothing to trigger on — `401` and `422` both indicate a real problem with the request (bad credentials or bad input) that a retry won't fix. The failures worth retrying are **network-level**: timeouts, connection resets, and DNS errors, where the request may never have reached the server at all.
 
 ```typescript
-async function retryTransient<T>(fn: () => Promise<Response>, maxRetries = 4): Promise<Response> {
+async function retryOnNetworkFailure<T>(fn: () => Promise<Response>, maxRetries = 4): Promise<Response> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fn();
-    if (![429, 500].includes(response.status)) return response;
-
-    const delayMs = 1000 * Math.pow(2, attempt);
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    try {
+      return await fn();
+    } catch (networkError) {
+      // fetch/axios throw here for timeouts, connection resets, DNS failures —
+      // never for a 401/422 response, which resolves normally with that status.
+      if (attempt === maxRetries) throw networkError;
+      const delayMs = 1000 * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
-
   throw new Error("Coinut API retry limit exceeded");
 }
 ```
+
+Do not automatically retry money-moving `POST` requests after a network failure unless your integration has an idempotency strategy and has checked the current object state first — a timeout doesn't tell you whether the operation succeeded before the connection dropped.
 
 ## Idempotency
 

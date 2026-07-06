@@ -11,8 +11,9 @@ All webhooks:
 
 - Use the `POST` method
 - Send a JSON body
-- Expect an HTTP `200` response within 30 seconds
-- Use the `WebhookEvent` envelope documented in `rampdocs.json`
+- Accept any `2xx` response as a successful delivery — respond as soon as you've durably queued the event, since no delivery timeout is currently enforced (see [Webhook Delivery](#webhook-delivery))
+- Use the `{event, payload}` envelope shown in the examples below
+- Are signed with the same HMAC-SHA256 scheme used for incoming requests (see [Signature Verification](#signature-verification))
 
 ## Setting Up Webhooks
 
@@ -40,10 +41,10 @@ All webhooks:
     ```
   </Step>
   <Step title="Verify signature">
-    `rampdocs.json` does not define a webhook signature header or verification algorithm. If Coinut enables signed webhooks for your environment, follow the latest operational guidance provided with your partner account.
+    Every webhook is signed exactly like an incoming API request (see [Authentication](authentication)): the same four headers (`X-API-Key`, `X-Timestamp`, `X-Nonce`, `X-Signature`) are sent with the callback, built from the same HMAC-SHA256 canonical string. Verify it before trusting the payload — see [Signature Verification](#signature-verification) below for the exact construction.
   </Step>
   <Step title="Acknowledge receipt">
-    Return HTTP `200` within 30 seconds. The exact retry policy is not defined in `rampdocs.json`, so your handler should be idempotent and safe to receive duplicate deliveries.
+    Return any `2xx` status as soon as you've durably stored or queued the event. There is currently no server-side delivery timeout, but you should still respond quickly and process asynchronously — a slow handler ties up a delivery worker rather than protecting you from anything. Failed deliveries are retried up to 5 times with increasing backoff (10 minutes, 1 hour, 1 day, 1 week), so your handler must be idempotent and safe to receive duplicate deliveries.
   </Step>
 </Steps>
 
@@ -52,11 +53,12 @@ All webhooks:
 | Property | Value |
 | --- | --- |
 | Method | `POST` |
-| Protocol | HTTPS only |
-| Timeout | 30 seconds |
-| Retries | Not specified in `rampdocs.json` |
-| Backoff | Not specified in `rampdocs.json` |
-| Deduplication | `event` \+ `payload` combination |
+| Protocol | HTTPS strongly recommended. Note: the callback-URL field is not currently restricted to `https://` by validation, so a plain HTTP URL will be accepted — use HTTPS regardless, since payloads include customer and transaction data. |
+| Timeout | Not enforced by the sender today — the delivery attempt will wait indefinitely for your response. Respond promptly anyway; don't rely on this. |
+| Retries | Up to 5 total attempts per event |
+| Backoff | 10 minutes → 1 hour → 1 day → 1 week between attempts |
+| Success criteria | Any `2xx` response |
+| Deduplication | `event` \+ `payload.id` combination |
 
 ## Event Types
 
@@ -75,6 +77,22 @@ All webhooks:
 | `TRADE_CREATED` | Trade initiated | `TradeDetailDataDto` |
 | `TRADE_SETTLED` | Trade completed | `TradeDetailDataDto` |
 | `PAYMENT_SETTLED` | Payment completed | `GetPaymentDetailDataDto` |
+
+### Legacy events
+
+These dot-notation events are still delivered in production for backward compatibility, but are deprecated — build new integrations against the events table above instead. They use different, older payload shapes (`WebhookUserPayload`, `WebhookVaPayload`, `WebhookDepositPayload`, `WebhookTradePayload`).
+
+| Legacy event | Replaced by |
+| --- | --- |
+| `user.approved` | `CUSTOMER_APPROVED` |
+| `user.rejected` | `CUSTOMER_REJECTED` |
+| `va.approved` | `VIRTUAL_ACCOUNT_APPROVED` |
+| `va.rejected` | `VIRTUAL_ACCOUNT_REJECTED` |
+| `deposit.received` | `DEPOSIT_RECEIVED` |
+| `deposit.approved` | `DEPOSIT_APPROVED` |
+| `deposit.rejected` | `DEPOSIT_REJECTED` |
+| `trade.created` | `TRADE_CREATED` |
+| `trade.settled` | `TRADE_SETTLED` |
 
 ## Webhook Payload Examples
 
@@ -135,12 +153,18 @@ All webhooks:
     "createTime": "2026-03-12T17:23:15Z",
     "deposit": {
       "id": "550e8400-e29b-41d4-a716-446655440000",
-      "currency": "AUD",
-      "amount": "1500.00"
+      "customerName": "Alice Smith"
+    },
+    "withdrawal": {
+      "txId": "0xabc123..."
     }
   }
 }
 ```
+
+<Note>
+  `deposit` is only present when the trade's originating deposit used the current deposit flow — for deposits made under the legacy flow, a `legacyDeposit` object (`{id, customerName}`, numeric `id`) is sent instead. `withdrawal.txId` is only present once the outgoing crypto transaction has been broadcast; it may be absent on early deliveries of this event.
+</Note>
 
 ```json PAYMENT_SETTLED
 {
@@ -159,8 +183,11 @@ All webhooks:
     "bankAccount": {
       "bankName": "DBS Bank",
       "accountNo": "1234567890",
-      "currency": "USD",
-      "beneficiaryName": "Alice Smith"
+      "bankCountry": "SG",
+      "bankAddress": "12 Marina Blvd",
+      "swift": "DBSSSGSG",
+      "beneficiaryName": "Alice Smith",
+      "beneficiaryAddress": "1 Example Street"
     }
   }
 }
@@ -170,15 +197,76 @@ All webhooks:
 
 ## Signature Verification
 
-`rampdocs.json` does not define a webhook signature header or signature-construction method. If your partner setup includes signed webhook delivery, use Coinut's current operational guidance for header names, canonicalization rules, and retry handling.
+Every webhook delivery is signed with the same HMAC-SHA256 scheme documented on the [Authentication](authentication) page for incoming requests — using your API key/secret pair, not a separate webhook secret. The request carries the same four headers:
+
+| Header | Description |
+| --- | --- |
+| `X-API-Key` | Your API key |
+| `X-Timestamp` | Unix timestamp in seconds, at send time |
+| `X-Nonce` | A random string, unique per delivery |
+| `X-Signature` | HMAC-SHA256 hex digest of the canonical string below |
+
+Build the same newline-delimited canonical string used for request signing, then verify it with HMAC-SHA256 using your API secret:
+
+```text
+POST
+<your host>
+<your webhook path>
+                          <- empty query-string segment
+sha256(raw request body)
+<X-Timestamp value>
+<X-Nonce value>
+```
+
+<CodeGroup>
+
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhookSignature(req, apiSecret) {
+  const { 'x-timestamp': timestamp, 'x-nonce': nonce, 'x-signature': signature } = req.headers;
+  const host = req.headers.host;
+  const path = req.path; // e.g. '/webhooks/coinut'
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(req.body)).digest('hex');
+
+  const canonical = ['POST', host, path, '', bodyHash, timestamp, nonce].join('\n');
+  const expected = crypto.createHmac('sha256', apiSecret).update(canonical).digest('hex');
+
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+```
+
+```python Python
+import hmac
+import hashlib
+import json
+
+def verify_webhook_signature(headers, body: dict, path: str, api_secret: str) -> bool:
+    timestamp = headers["X-Timestamp"]
+    nonce = headers["X-Nonce"]
+    signature = headers["X-Signature"]
+    host = headers["Host"]
+
+    body_hash = hashlib.sha256(json.dumps(body, separators=(",", ":")).encode()).hexdigest()
+    canonical = "\n".join(["POST", host, path, "", body_hash, timestamp, nonce])
+    expected = hmac.new(api_secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+    return hmac.compare_digest(expected, signature)
+```
+
+</CodeGroup>
+
+<Warning>
+  The exact JSON serialization of the body must match byte-for-byte on both sides for the body hash to match — verify against the **raw request body bytes** your framework received, not a value you've re-serialized after parsing, since key ordering or whitespace differences will produce a different hash.
+</Warning>
 
 ## Best Practices
 
-- **Verify signatures when enabled.** If Coinut provides a webhook signature mechanism for your environment, validate it before processing the payload.
+- **Always verify signatures.** Validate every delivery with the scheme above before processing the payload — don't rely on network-level trust (e.g. IP allowlisting) alone.
 - **Handle idempotently.** Use the `event` \+ `payload.id` combination to prevent duplicate processing.
-- **Return 200 quickly.** Respond immediately, then process the event asynchronously.
+- **Respond quickly, process asynchronously.** No delivery timeout is enforced today, but don't depend on that — acknowledge with a `2xx` as soon as the event is durably queued.
 - **Log everything.** Store raw payloads and headers for debugging.
-- **Expect retries.** The same event may arrive multiple times if your handler is slow.
+- **Expect retries.** The same event can be redelivered up to 5 times over the course of a week if your endpoint doesn't return `2xx`.
 
 <Tip>
   Test webhooks locally with [ngrok](https://ngrok.com). Run `ngrok http 3000`, then register the HTTPS tunnel URL as your callback endpoint. Coinut will deliver events to your local machine.

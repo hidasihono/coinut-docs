@@ -7,7 +7,7 @@ Onramp lets your customers convert fiat currency into cryptocurrency. This guide
 
 ## What is Onramp?
 
-Onramp lets your customers convert fiat currency (AUD, EUR, GBP, SGD ,USD and Other currencies) into cryptocurrency (USDT, USDC ). The flow works like this:
+Onramp lets your customers convert fiat currency (`AUD`, `EUR`, `GBP`, `SGD`, `USD` — a closed set) into cryptocurrency (`USDT`, `USDC`). The flow works like this:
 
 1. Customer sends fiat to a virtual account
 2. Coinut detects the deposit
@@ -36,30 +36,30 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
     }
     ```
 
-    Store the returned `customerId`. The customer receives a KYC link via email to complete identity verification.
+    Store the returned `id` — that's the customer identifier for every subsequent call. The customer receives a KYC link via email to complete identity verification.
   </Step>
   <Step title="Wait for KYC Approval">
     Listen for the `CUSTOMER_APPROVED` webhook event. You can also poll `GET /customer/detail` to check status.
 
-    Customer status transitions: `CREATED` → `PENDING` → `APPROVED` | `REJECTED`
+    Customer status transitions: `PENDING` → `CONFIRMED` | `REJECTED` (a customer can also end up `DELETED`).
   </Step>
   <Step title="Create Virtual Account">
-    Call `POST /virtual-account/create` with `customerId` and currency (`AUD`, `EUR`, `GBP`).
+    Call `POST /virtual-account/create` with `customerId` and currency (`AUD`, `EUR`, `GBP`, `SGD`, or `USD`).
 
-    For AUD accounts, optionally include a `whitelist` to pre-register allowed senders.
+    For AUD accounts, optionally include a `whitelist` to pre-register an allowed sender.
 
-    Store all returned VA banking details (PayID, BSB, account number, IBAN, etc.).
+    The create response only returns the new VA's `id` — it does not include banking details. Immediately follow up with `GET /virtual-account/detail?id=...` to fetch the PayID, account number, IBAN, and `bicSwift` (BSB for AUD, SWIFT/BIC for other currencies), and store those alongside the VA `id`.
   </Step>
   <Step title="Add Crypto Address">
     Call `POST /crypto-address/add` with:
 
     - `customerId`
-    - `currency="USDT"`
+    - `currency` — `"USDT"` or `"USDC"`
     - `address` — the customer's wallet address
     - `label` — a display label
-    - `network` — `ETH` for ERC-20 or `TRX` for TRC-20
+    - `network` — optional; `"ETH"` for ERC-20, `"TRX"` for TRC-20, or `"MATIC"` for Polygon
 
-    Store the returned crypto address ID. You'll need it for the autoramp flow.
+    Store the returned `id`. You'll need it for the autoramp flow.
   </Step>
   <Step title="Create Autoramp Flow">
     Call `POST /autoramp-flow/onramp` with the fiat source and crypto destination:
@@ -77,14 +77,10 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
     This links the virtual account deposits to automatic crypto conversion.
   </Step>
   <Step title="Display VA to Customer">
-    Show the virtual account details in your UI:
+    Show the virtual account details from `GET /virtual-account/detail` in your UI. There's a single `bicSwift` field for every currency — it carries the BSB number for AUD and the SWIFT/BIC code for everything else. There's no separate "sort code" field.
 
-    - **AUD**: Display PayID (e.g., `john.doe@example.com`) and BSB \+ Account Number
-    - **EUR**: Display IBAN and SWIFT/BIC
-    - **GBP**: Display IBAN and Sort Code
-    - **USD**: Display IBAN and Sort Code
-    - **SGD**: Display IBAN and Sort Code
-    - **other currencies** : Contact Coinut support for the exact banking fields
+    - **AUD**: Display `payId` (e.g., `john.doe@example.com`), `bicSwift` (BSB), and `accountNumber`
+    - **EUR / GBP / SGD / USD**: Display `iban` and `bicSwift` (SWIFT/BIC)
 
     Generate a QR code for PayID to simplify mobile banking transfers.
   </Step>
@@ -105,16 +101,12 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
     Or poll `GET /trade/list`.
   </Step>
   <Step title="Confirm Settlement">
-    The `TRADE_SETTLED` webhook includes `txHash`. Use it to verify the crypto transaction on-chain:
+    There's no top-level `txHash` field. Once the crypto has been broadcast, the `TRADE_SETTLED` payload includes a nested `withdrawal.txId` — use that to verify the transaction on-chain:
 
-    - ERC-20: [https://etherscan.io/tx/{txHash}](https://etherscan.io/tx/{txHash})
-    - TRC-20: [https://tronscan.org/#/transaction/{txHash}](https://tronscan.org/#/transaction/{txHash})
-  </Step>
-  <Step title="Confirm Settlement">
-    The `TRADE_SETTLED` webhook includes `txHash`. Use it to verify the crypto transaction on-chain:
+    - ERC-20: `https://etherscan.io/tx/{withdrawal.txId}`
+    - TRC-20: `https://tronscan.org/#/transaction/{withdrawal.txId}`
 
-    - ERC-20: [https://etherscan.io/tx/](https://etherscan.io/tx/{txHash}){txHash}
-    - TRC-20: [https://tronscan.org/#/transaction/](https://tronscan.org/#/transaction/{txHash}){txHash}
+    `withdrawal` may be absent on the first delivery of `TRADE_SETTLED` if the broadcast hasn't completed yet — treat it as optional and don't assume it's always present.
   </Step>
 </Steps>
 
@@ -131,7 +123,11 @@ const API_KEY = process.env.COINUT_API_KEY;
 const API_SECRET = process.env.COINUT_API_SECRET;
 
 // ── Authentication Helper ─────────────────────────────
-function createSignature(method, path, body = {}) {
+// `query` must be the exact query string sent on the wire (no leading '?'),
+// e.g. 'customerId=abc123'. Pass '' for requests with no query parameters —
+// omitting it (or hardcoding '') for a GET request that DOES have query
+// parameters will produce a signature the server rejects.
+function createSignature(method, path, query = '', body = {}) {
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const nonce = crypto.randomUUID();
   const host = new URL(BASE_URL).host;
@@ -143,7 +139,7 @@ function createSignature(method, path, body = {}) {
     method.toUpperCase(),
     host,
     path,
-    '',
+    query,
     bodyHash,
     timestamp,
     nonce,
@@ -152,12 +148,14 @@ function createSignature(method, path, body = {}) {
   return { timestamp, nonce, signature };
 }
 
-async function coinutRequest(method, path, body = {}) {
-  const { timestamp, nonce, signature } = createSignature(method, path, body);
+async function coinutRequest(method, path, { query = '', body } = {}) {
+  const { timestamp, nonce, signature } = createSignature(method, path, query, body);
 
-  return axios({
+  // Resolve to the response BODY (the `{status, data}` envelope), not the
+  // raw axios response — every caller below destructures `.data` off this.
+  const response = await axios({
     method,
-    url: `${BASE_URL}${path}`,
+    url: `${BASE_URL}${path}${query ? '?' + query : ''}`,
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': API_KEY,
@@ -167,49 +165,60 @@ async function coinutRequest(method, path, body = {}) {
     },
     data: body,
   });
+  return response.data;
 }
 
 // ── Step 1: Create Customer ──────────────────────────
 async function createCustomer(name, email, externalId) {
   const { data } = await coinutRequest('POST', '/customer/create', {
-    name,
-    email,
-    type: 'DEPOSITOR',
-    isIndividual: true,
-    externalId, // Links to your internal user system
+    body: {
+      name,
+      email,
+      type: 'DEPOSITOR',
+      isIndividual: true,
+      externalId, // Links to your internal user system
+    },
   });
-  return data.customerId;
+  return data.id;
 }
 
-// ── Step 3: Create Virtual Account ───────────────────
+// ── Step 3: Create Virtual Account, then fetch its banking details ──
 async function createVirtualAccount(customerId, currency) {
-  const { data } = await coinutRequest('POST', '/virtual-account/create', {
-    customerId,
-    currency, // 'AUD', 'EUR', 'SGD','USD' or 'GBP',etc
+  const { data: created } = await coinutRequest('POST', '/virtual-account/create', {
+    body: { customerId, currency }, // currency: 'AUD' | 'EUR' | 'GBP' | 'SGD' | 'USD'
   });
-  return data;
+  // The create response only contains `id` — fetch the detail record for
+  // payId / accountNumber / iban / bicSwift.
+  const { data: detail } = await coinutRequest('GET', '/virtual-account/detail', {
+    query: `id=${created.id}`,
+  });
+  return detail;
 }
 
 // ── Step 4: Add Crypto Address ───────────────────────
 async function addCryptoAddress(customerId, address, network) {
   const { data } = await coinutRequest('POST', '/crypto-address/add', {
-    customerId,
-    currency: 'USDT', // 'USDT','USDC'
-    address,
-    label: 'Customer Wallet',
-    network, // 'ETH' .'TRX' or 'MATIC'
+    body: {
+      customerId,
+      currency: 'USDT', // 'USDT' or 'USDC'
+      address,
+      label: 'Customer Wallet',
+      network, // optional: 'ETH', 'TRX', or 'MATIC'
+    },
   });
-  return data.cryptoAddressId;
+  return data.id;
 }
 
 // ── Step 5: Create Onramp Flow ───────────────────────
 async function createOnrampFlow(customerId, fiatCurrency, cryptoAddressId) {
   const { data } = await coinutRequest('POST', '/autoramp-flow/onramp', {
-    from: {
-      customerId,
-      currency: fiatCurrency,
+    body: {
+      from: {
+        customerId,
+        currency: fiatCurrency,
+      },
+      to: cryptoAddressId,
     },
-    to: cryptoAddressId,
   });
   return data;
 }
@@ -224,7 +233,7 @@ async function executeOnramp(user) {
     // 2. Wait for KYC approval (webhook or polling)
     // See webhook handler below
 
-    // 3. Create virtual account
+    // 3. Create virtual account and fetch its banking details
     const va = await createVirtualAccount(customerId, 'AUD');
     console.log('VA created:', va.payId);
 
@@ -237,14 +246,15 @@ async function executeOnramp(user) {
 
     // 5. Create autoramp flow
     const flow = await createOnrampFlow(customerId, 'AUD', cryptoAddressId);
-    console.log('Onramp flow created:', flow.flowId);
+    console.log('Onramp flow created:', flow.id);
 
     return {
       customerId,
+      virtualAccountId: va.id,
       payId: va.payId,
-      bsb: va.bsb,
+      bicSwift: va.bicSwift, // BSB for AUD, SWIFT/BIC for other currencies
       accountNumber: va.accountNumber,
-      flowId: flow.flowId,
+      flowId: flow.id,
     };
   } catch (error) {
     console.error('Onramp failed:', error.response?.data || error.message);
@@ -253,21 +263,23 @@ async function executeOnramp(user) {
 }
 
 // ── Webhook Handler ──────────────────────────────────
+// Note: verify the X-Signature header (see the Webhooks page) before
+// trusting req.body in production — omitted here for brevity.
 const express = require('express');
 const app = express();
 app.use(express.json());
 
 app.post('/webhooks/coinut', (req, res) => {
-  const { event, data } = req.body;
+  const { event, payload } = req.body;
 
   switch (event) {
     case 'CUSTOMER_APPROVED':
-      console.log('Customer KYC approved:', data.customerId);
+      console.log('Customer KYC approved:', payload.id);
       // Proceed to create VA and flow
       break;
 
     case 'DEPOSIT_RECEIVED':
-      console.log('Deposit received:', data.amount, data.currency);
+      console.log('Deposit received:', payload.amount, payload.currency);
       break;
 
     case 'DEPOSIT_APPROVED':
@@ -275,12 +287,12 @@ app.post('/webhooks/coinut', (req, res) => {
       break;
 
     case 'TRADE_SETTLED':
-      console.log('Trade settled! TX hash:', data.txHash);
+      console.log('Trade settled! TX id:', payload.withdrawal?.txId);
       // Notify customer
       break;
 
     case 'CUSTOMER_REJECTED':
-      console.log('Customer KYC rejected:', data.customerId, data.reason);
+      console.log('Customer KYC rejected:', payload.id);
       break;
   }
 
@@ -304,21 +316,24 @@ API_KEY = os.environ["COINUT_API_KEY"]
 API_SECRET = os.environ["COINUT_API_SECRET"]
 
 
-def create_signature(method: str, path: str, body: dict = None):
+def create_signature(method: str, path: str, query: str = "", body: dict = None):
+    # `query` must be the exact query string sent on the wire (no leading '?').
+    # Hardcoding "" here for a GET request that has query parameters will
+    # produce a signature the server rejects.
     timestamp = str(int(time.time()))
     nonce = str(uuid.uuid4())
     host = "ramp.hexarails.ai"
     request_body = "" if method.upper() == "GET" else json.dumps(body or {}, separators=(",", ":"))
     body_hash = hashlib.sha256(request_body.encode()).hexdigest() if request_body else ""
-    payload = "\n".join([method.upper(), host, path, "", body_hash, timestamp, nonce])
+    canonical = "\n".join([method.upper(), host, path, query, body_hash, timestamp, nonce])
     signature = hmac.new(
-        API_SECRET.encode(), payload.encode(), hashlib.sha256
+        API_SECRET.encode(), canonical.encode(), hashlib.sha256
     ).hexdigest()
     return timestamp, nonce, signature
 
 
-def coinut_request(method: str, path: str, body: dict = None):
-    timestamp, nonce, signature = create_signature(method, path, body)
+def coinut_request(method: str, path: str, query: str = "", body: dict = None):
+    timestamp, nonce, signature = create_signature(method, path, query, body)
 
     headers = {
         "Content-Type": "application/json",
@@ -328,42 +343,46 @@ def coinut_request(method: str, path: str, body: dict = None):
         "X-Signature": signature,
     }
 
-    resp = requests.request(method, f"{BASE_URL}{path}", json=body, headers=headers)
+    url = f"{BASE_URL}{path}" + (f"?{query}" if query else "")
+    resp = requests.request(method, url, json=body, headers=headers)
     resp.raise_for_status()
     return resp.json()
 
 
 def create_customer(name: str, email: str, external_id: str) -> str:
-    data = coinut_request("POST", "/customer/create", {
+    resp = coinut_request("POST", "/customer/create", body={
         "name": name,
         "email": email,
         "type": "DEPOSITOR",
         "isIndividual": True,
         "externalId": external_id,
     })
-    return data["customerId"]
+    return resp["data"]["id"]
 
 
-def create_virtual_account(customer_id: str, currency: str):
-    return coinut_request("POST", "/virtual-account/create", {
+def create_virtual_account(customer_id: str, currency: str) -> dict:
+    created = coinut_request("POST", "/virtual-account/create", body={
         "customerId": customer_id,
         "currency": currency,
     })
+    # Create only returns `id` — fetch detail for payId / accountNumber / bicSwift / iban.
+    detail = coinut_request("GET", "/virtual-account/detail", query=f"id={created['data']['id']}")
+    return detail["data"]
 
 
 def add_crypto_address(customer_id: str, address: str, network: str) -> str:
-    data = coinut_request("POST", "/crypto-address/add", {
+    resp = coinut_request("POST", "/crypto-address/add", body={
         "customerId": customer_id,
         "currency": "USDT",
         "address": address,
         "label": "Customer Wallet",
         "network": network,
     })
-    return data["cryptoAddressId"]
+    return resp["data"]["id"]
 
 
 def create_onramp_flow(customer_id: str, fiat_currency: str, crypto_address_id: str):
-    return coinut_request("POST", "/autoramp-flow/onramp", {
+    return coinut_request("POST", "/autoramp-flow/onramp", body={
         "from": {"customerId": customer_id, "currency": fiat_currency},
         "to": crypto_address_id,
     })
@@ -377,8 +396,8 @@ def execute_onramp(user: dict):
 
     return {
         "customerId": customer_id,
-        "payId": va["data"]["payId"],
-        "flowId": flow["flowId"],
+        "payId": va["payId"],
+        "flowId": flow["data"]["id"],
     }
 ```
 
@@ -390,9 +409,13 @@ const BASE_URL = 'https://ramp.hexarails.ai';
 const API_KEY = process.env.COINUT_API_KEY!;
 const API_SECRET = process.env.COINUT_API_SECRET!;
 
+// `query` must be the exact query string sent on the wire (no leading '?').
+// Hardcoding '' here for a GET request that has query parameters will
+// produce a signature the server rejects.
 function createSignature(
   method: string,
   path: string,
+  query = '',
   body?: object
 ): { timestamp: string; nonce: string; signature: string } {
   const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -402,29 +425,29 @@ function createSignature(
   const bodyHash = requestBody
     ? crypto.createHash('sha256').update(requestBody).digest('hex')
     : '';
-  const payload = [
+  const canonical = [
     method.toUpperCase(),
     host,
     path,
-    '',
+    query,
     bodyHash,
     timestamp,
     nonce,
   ].join('\n');
-  const signature = crypto.createHmac('sha256', API_SECRET).update(payload).digest('hex');
+  const signature = crypto.createHmac('sha256', API_SECRET).update(canonical).digest('hex');
   return { timestamp, nonce, signature };
 }
 
 async function coinutRequest<T>(
   method: string,
   path: string,
-  body?: object
+  { query = '', body }: { query?: string; body?: object } = {}
 ): Promise<T> {
-  const { timestamp, nonce, signature } = createSignature(method, path, body);
+  const { timestamp, nonce, signature } = createSignature(method, path, query, body);
 
   const config: AxiosRequestConfig = {
     method,
-    url: `${BASE_URL}${path}`,
+    url: `${BASE_URL}${path}${query ? '?' + query : ''}`,
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': API_KEY,
@@ -435,28 +458,29 @@ async function coinutRequest<T>(
     data: body,
   };
 
-  const { data } = await axios(config);
-  return data;
+  // Unwrap to the payload inside the `{status, data}` envelope, not the raw response body.
+  const response = await axios(config);
+  return response.data.data as T;
 }
 
 interface Customer {
-  customerId: string;
+  id: string;
 }
 
 interface VirtualAccount {
-  data: {
-    payId: string;
-    bsb: string;
-    accountNumber: string;
-  };
+  id: string;
+  payId?: string;
+  bicSwift?: string; // BSB for AUD, SWIFT/BIC for other currencies
+  accountNumber?: string;
+  iban?: string;
 }
 
 interface CryptoAddress {
-  cryptoAddressId: string;
+  id: string;
 }
 
 interface OnrampFlow {
-  flowId: string;
+  id: string;
 }
 
 export async function executeOnramp(
@@ -464,37 +488,41 @@ export async function executeOnramp(
   email: string,
   externalId: string,
   walletAddress: string
-): Promise<{ customerId: string; payId: string; flowId: string }> {
+): Promise<{ customerId: string; payId?: string; flowId: string }> {
   const customer = await coinutRequest<Customer>('POST', '/customer/create', {
-    name,
-    email,
-    type: 'DEPOSITOR',
-    isIndividual: true,
-    externalId,
+    body: { name, email, type: 'DEPOSITOR', isIndividual: true, externalId },
   });
 
-  const va = await coinutRequest<VirtualAccount>('POST', '/virtual-account/create', {
-    customerId: customer.customerId,
-    currency: 'AUD',
+  const createdVa = await coinutRequest<VirtualAccount>('POST', '/virtual-account/create', {
+    body: { customerId: customer.id, currency: 'AUD' },
+  });
+
+  // Create only returns `id` — fetch detail for payId / accountNumber / bicSwift / iban.
+  const va = await coinutRequest<VirtualAccount>('GET', '/virtual-account/detail', {
+    query: `id=${createdVa.id}`,
   });
 
   const cryptoAddress = await coinutRequest<CryptoAddress>('POST', '/crypto-address/add', {
-    customerId: customer.customerId,
-    currency: 'USDT',
-    address: walletAddress,
-    label: 'Customer Wallet',
-    network: 'TRX',
+    body: {
+      customerId: customer.id,
+      currency: 'USDT',
+      address: walletAddress,
+      label: 'Customer Wallet',
+      network: 'TRX',
+    },
   });
 
   const flow = await coinutRequest<OnrampFlow>('POST', '/autoramp-flow/onramp', {
-    from: { customerId: customer.customerId, currency: 'AUD' },
-    to: cryptoAddress.cryptoAddressId,
+    body: {
+      from: { customerId: customer.id, currency: 'AUD' },
+      to: cryptoAddress.id,
+    },
   });
 
   return {
-    customerId: customer.customerId,
-    payId: va.data.payId,
-    flowId: flow.flowId,
+    customerId: customer.id,
+    payId: va.payId,
+    flowId: flow.id,
   };
 }
 ```
