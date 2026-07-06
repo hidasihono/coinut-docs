@@ -57,7 +57,7 @@ API_KEY="your_api_key"
 API_SECRET="your_api_secret"
 TIMESTAMP=$(date +%s)
 NONCE="$(uuidgen | tr '[:upper:]' '[:lower:]')"
-HOST="ramp.hexarails.ai"
+HOST="ramp-sandbox.hexarails.ai"
 METHOD="GET"
 PATH="/balance"
 QUERY=""
@@ -65,7 +65,7 @@ BODY_SHA256=""
 PAYLOAD="${METHOD}\n${HOST}\n${PATH}\n${QUERY}\n${BODY_SHA256}\n${TIMESTAMP}\n${NONCE}"
 SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$API_SECRET" | cut -d' ' -f2)
 
-curl -X "$METHOD" "https://ramp.hexarails.ai/balance" \
+curl -X "$METHOD" "https://ramp-sandbox.hexarails.ai/balance" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: $API_KEY" \
   -H "X-Timestamp: $TIMESTAMP" \
@@ -78,7 +78,7 @@ const crypto = require('crypto');
 
 const API_KEY = 'your_api_key';
 const API_SECRET = 'your_api_secret';
-const BASE_URL = 'https://ramp.hexarails.ai';
+const BASE_URL = 'https://ramp-sandbox.hexarails.ai';
 
 async function authedRequest(method, path, body = {}) {
   const timestamp = Math.floor(Date.now() / 1000).toString();
@@ -123,13 +123,13 @@ import hmac, hashlib, json, time, requests
 
 API_KEY = 'your_api_key'
 API_SECRET = 'your_api_secret'
-BASE_URL = 'https://ramp.hexarails.ai'
+BASE_URL = 'https://ramp-sandbox.hexarails.ai'
 
 def authed_request(method, path, body=None):
     body = body or {}
     timestamp = str(int(time.time()))
     nonce = '550e8400-e29b-41d4-a716-446655440000'
-    host = 'ramp.hexarails.ai'
+    host = 'ramp-sandbox.hexarails.ai'
     request_body = '' if method.upper() == 'GET' else json.dumps(body, separators=(',', ':'))
     body_hash = hashlib.sha256(request_body.encode()).hexdigest() if request_body else ''
     payload = '\n'.join([method.upper(), host, path, '', body_hash, timestamp, nonce])
@@ -164,7 +164,7 @@ import crypto from 'crypto';
 
 const API_KEY = 'your_api_key';
 const API_SECRET = 'your_api_secret';
-const BASE_URL = 'https://ramp.hexarails.ai';
+const BASE_URL = 'https://ramp-sandbox.hexarails.ai';
 
 async function authedRequest<T>(
   method: string,
@@ -240,7 +240,7 @@ authedRequest('GET', '/balance').then(console.log);
 | --- | --- |
 | `200` | Request succeeded. A small set of legacy endpoints (see [Errors](errors)) return `200` even on failure — check the JSON `status` field on those routes. |
 | `401` | Authentication failed — missing/invalid signature, API key, timestamp, or nonce. See [Authentication](authentication). |
-| `403` | Infrastructure access control blocked the request before application auth. |
+| `403` | Not returned by the application itself (no `ForbiddenException` exists anywhere in this service's code) — if you see one, it was blocked by infrastructure in front of the API (WAF/gateway/IP block) before your request reached application auth. |
 | `422` | Request was authenticated but invalid, or a downstream operation failed. |
 
 ## Pagination

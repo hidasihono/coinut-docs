@@ -171,12 +171,12 @@
         {
           "anchor": "Dashboard",
           "href": "https://coinut.com",
-          "icon": "images/logo.png"
+          "icon": "layout-dashboard"
         },
         {
           "anchor": "Support",
           "href": "mailto:support@coinut.com",
-          "icon": "life-ring"
+          "icon": "envelope"
         }
       ]
     }
