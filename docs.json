@@ -63,7 +63,7 @@
             "pages": [
               "autoramp-flows",
               "deposits",
-              
+
               "trades",
               "payments"
             ]
@@ -112,7 +112,6 @@
           {
             "group": "Common",
             "pages": [
-              "api/common-balance",
               "api/common-deposit-address",
               "api/common-basic-info",
               "api/common-health",
@@ -121,7 +120,8 @@
               "api/common-subscribed-events-get",
               "api/common-subscribed-events-update",
               "api/common-ip-whitelist-get",
-              "api/common-ip-whitelist-update"
+              "api/common-ip-whitelist-update",
+              "api/common-balance"
             ]
           },
           {
