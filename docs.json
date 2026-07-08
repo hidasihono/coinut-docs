@@ -58,6 +58,7 @@
           },
           {
             "group": "Autoramp & Transactions",
+            "hidden": true,
             "pages": [
               "autoramp-flows",
               "deposits",

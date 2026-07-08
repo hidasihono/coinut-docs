@@ -3,23 +3,37 @@ title: "QR Code Payments"
 description: "Generate QR codes for PayID payments and crypto addresses."
 ---
 
-QR codes simplify payments by letting customers scan with their banking or wallet app instead of manually typing account details. This guide covers generating QR codes for both PayID (AUD) and crypto addresses.
+## Use Case
 
-## Overview
+Generate scannable QR codes for two distinct payment types: **PayID** (AUD virtual account deposits) and **crypto address URIs** (onramp/offramp wallet addresses). A single scan populates all payment fields in the customer's banking or wallet app, eliminating transcription errors.
 
-QR codes bridge the gap between your app and the customer's banking/wallet app. A single scan populates all payment fields, eliminating transcription errors.
+## Example Flow
+
+<Steps>
+  <Step title="Get a payment target">
+    Partner already has a virtual account `payId` (fiat) or a verified deposit/crypto address (crypto) for the customer.
+  </Step>
+  <Step title="Generate the QR code">
+    Partner encodes the `payId` or address into a QR code using the code samples below.
+  </Step>
+  <Step title="Customer scans">
+    Customer scans the QR code in their banking or wallet app, which auto-populates the payment fields.
+  </Step>
+  <Step title="Coinut detects the deposit">
+    Coinut detects the incoming payment and, if the target is linked to an autoramp flow, converts it automatically.
+  </Step>
+</Steps>
 
 ## PayID QR Codes (AUD)
 
-PayID QR codes follow the standard format:
-
-```text
-payid:{payIdAddress}
-```
-
-**Example**: `payid:john.doe@example.com`
-
-When scanned with an Australian banking app, the PayID field is auto-populated and the customer only needs to enter the amount and confirm.
+<Steps>
+  <Step title="Prerequisite: get a payId">
+    Create a virtual account via [Virtual Accounts](virtual-accounts-guide). The create response only returns the new VA's `id` — immediately call [`GET /virtual-account/detail`](api/virtual-account-detail) <Icon icon="link" size={14} /> to read `payId`.
+  </Step>
+  <Step title="Encode the format">
+    PayID QR codes follow the format `payid:{payIdAddress}` — e.g. `payid:john.doe@example.com`. When scanned with an Australian banking app, the PayID field is auto-populated and the customer only needs to enter the amount and confirm.
+  </Step>
+</Steps>
 
 ### Supported Banks
 
@@ -36,9 +50,7 @@ All major Australian banks support PayID/Osko QR scanning:
 | Bendigo Bank | Yes | Yes |
 | Suncorp Bank | Yes | Yes |
 
-## Implementation
-
-### Node.js
+### Generate the QR
 
 <CodeGroup>
 
@@ -125,12 +137,6 @@ async function generatePayIdQRSVG(payId) {
 const svg = await generatePayIdQRSVG('john.doe@example.com');
 // <div dangerouslySetInnerHTML={{ __html: svg }} />
 ```
-
-</CodeGroup>
-
-### Python
-
-<CodeGroup>
 
 ```python Generate as Base64 Data URL
 # pip install qrcode[pil]
@@ -246,12 +252,6 @@ def generate_payid_qr_with_logo(
     img.save(output_path)
 ```
 
-</CodeGroup>
-
-### TypeScript / React
-
-<CodeGroup>
-
 ```tsx React Component
 // npm install qrcode.react
 import { QRCodeSVG } from 'qrcode.react';
@@ -358,17 +358,9 @@ export class QRCodeService {
 
 </CodeGroup>
 
-## Best Practices
-
-| Aspect | Recommendation |
-| --- | --- |
-| Format | Always use `payid:` prefix for AUD payments |
-| Error Correction | High (`H`) level — allows logo overlays and better scan reliability |
-| Minimum Size | 200×200px for digital display, 2×2cm for print |
-| Colors | High contrast (dark on light). Avoid light colors |
-| Border | Minimum 2-4 modules quiet zone around the QR code |
-| Resolution | Minimum 72 DPI for screen, 300 DPI for print |
-| Testing | Always test with actual banking apps before launch |
+<Note>
+  A virtual account's deposits only auto-convert to crypto if it's linked to an onramp flow. If you only need to receive and reconcile fiat, no autoramp flow is required — see [Autoramp Flows](autoramp-flows) and [Onramp Integration](onramp-integration).
+</Note>
 
 ## Crypto Address QR Codes
 
@@ -376,7 +368,7 @@ export class QRCodeService {
   Coinut's backend only issues deposit addresses for `USDT`, on the `ETH` or `TRX` network (`MATIC` is accepted by the deposit-address schema but isn't fully supported end-to-end yet — don't offer it to customers). The URI formats below (`ethereum:`, `tron:`) are common wallet-app conventions, not something Coinut generates, validates, or is tied to — test against the actual wallet apps you expect customers to use before relying on them.
 </Note>
 
-The `address` you QR-encode must come from a Coinut deposit address record ([`POST /deposit-address/create`](api/deposit-address-create), then [`GET /deposit-address/detail`](api/deposit-address-detail)) — **not** an arbitrary address you generate yourself. A newly created deposit address starts in `PENDING` status with `address: null`; wait for the `DEPOSIT_ADDRESS_APPROVED` webhook (or poll [`GET /deposit-address/detail`](api/deposit-address-detail) until `address` is populated) before generating a QR code — there is nothing to encode immediately after creation.
+The `address` you QR-encode must come from a Coinut deposit address record — **not** an arbitrary address you generate yourself. See [Crypto Addresses](crypto-addresses#deposit-addresses-offramp-entry) for how it's created and approved; it is **not** available synchronously on creation.
 
 For crypto deposits, use the standard URI format:
 
@@ -396,7 +388,7 @@ ethereum:0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E?network=ETH
 tron:TXYZ1234567890...?network=TRX
 ```
 
-### Simple Crypto QR Generator
+### Generate the QR
 
 ```javascript
 const QRCode = require('qrcode');
@@ -419,28 +411,17 @@ const qr = await generateCryptoQR(
 );
 ```
 
-## Integration Flow
+## Best Practices
 
-<Steps>
-  <Step title="Create VA">
-    Call [`POST /virtual-account/create`](api/virtual-account-create) with `customerId` and `currency`.
-  </Step>
-  <Step title="Fetch the PayID">
-    The create response only returns the new VA's `id` — it does not include `payId`. Immediately call [`GET /virtual-account/detail`](api/virtual-account-detail)`?id=...` and read `payId` from that response instead.
-  </Step>
-  <Step title="Generate QR">
-    Use one of the code examples above to generate a QR code from `payid:{payId}`.
-  </Step>
-  <Step title="Display in UI">
-    Embed the QR code in your payment page alongside the text PayID and `bicSwift` (BSB) \+ Account Number — there's a single `bicSwift` field for this, not a separate `bsb` field.
-  </Step>
-  <Step title="Customer Scans">
-    Customer opens their banking app, scans the QR code, enters the amount, and confirms.
-  </Step>
-  <Step title="Payment Arrives">
-    Your webhook endpoint receives a `DEPOSIT_RECEIVED` event once the transfer is detected. On its own, this only records the deposit against the customer — it does **not** automatically convert to crypto or trigger any downstream processing unless this VA is also linked to an onramp flow ([`POST /autoramp-flow/onramp`](api/autoramp-onramp), see the [Onramp Integration](onramp-integration) guide). If you only need to receive and reconcile fiat, `DEPOSIT_RECEIVED` (and `DEPOSIT_APPROVED` once cleared) is all you need to act on.
-  </Step>
-</Steps>
+| Aspect | Recommendation |
+| --- | --- |
+| Format | Always use `payid:` prefix for AUD payments |
+| Error Correction | High (`H`) level — allows logo overlays and better scan reliability |
+| Minimum Size | 200×200px for digital display, 2×2cm for print |
+| Colors | High contrast (dark on light). Avoid light colors |
+| Border | Minimum 2-4 modules quiet zone around the QR code |
+| Resolution | Minimum 72 DPI for screen, 300 DPI for print |
+| Testing | Always test with actual banking apps before launch |
 
 ## Testing
 
@@ -450,9 +431,7 @@ Verify your QR codes before deploying:
 2. **Banking app test**: Scan with a real Australian banking app (CommBank, ANZ, etc.)
 3. **Edge cases**: Test with different phone cameras, lighting conditions, and screen sizes
 
-### Quick Test Script
-
-```bash
+```bash Quick Test Script
 # Install zbar-tools (Linux/Mac)
 # brew install zbar (Mac)
 # apt-get install zbar-tools (Linux)
@@ -461,3 +440,10 @@ Verify your QR codes before deploying:
 zbarimg --raw payid-qr.png
 # Expected output: payid:john.doe@example.com
 ```
+
+## Related Guides
+
+- [Virtual Accounts](virtual-accounts-guide) — creating a VA and fetching its `payId`
+- [Crypto Addresses](crypto-addresses) — deposit address creation and approval
+- [Autoramp Flows](autoramp-flows) — linking a VA or deposit address to automatic conversion
+- [Onramp Integration](onramp-integration)

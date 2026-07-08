@@ -68,10 +68,10 @@ We perform KYC/AML screening, transaction monitoring, and regulatory reporting s
 
 <Steps>
   <Step title="Create the customer">
-    Create a customer with [`POST /customer/create`](api/customer-create). The response includes a Coinut customer ID and, when applicable, a Sumsub KYC link.
+    Create a customer with [`POST /customer/create`](api/customer-create) <Icon icon="link" size={14} />. The response includes a Coinut customer ID and, when applicable, a Sumsub KYC link.
   </Step>
   <Step title="Complete KYC">
-    Wait for approval through the Sumsub flow or your shared due diligence process. Use [`GET /customer/detail`](api/customer-detail) or the `CUSTOMER_APPROVED` webhook to confirm status.
+    Wait for approval through the Sumsub flow or your shared due diligence process. Use [`GET /customer/detail`](api/customer-detail) <Icon icon="link" size={14} /> or the `CUSTOMER_APPROVED` webhook to confirm status.
   </Step>
   <Step title="Provision rails">
     Create virtual accounts, bank accounts, crypto addresses, or deposit addresses depending on the product flow.

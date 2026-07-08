@@ -36,7 +36,7 @@ A VA starts in `PENDING` status after creation. Once compliance review completes
 ## Creating VAs
 
 <ParamField body="customerId" type="string" required>
-  The customer ID returned from [`POST /customer/create`](api/customer-create)
+  The customer ID returned from [`POST /customer/create`](api/customer-create) <Icon icon="link" size={14} />
 </ParamField>
 
 <ParamField body="currency" type="string" required>
@@ -64,7 +64,7 @@ POST /virtual-account/create
 ```
 
 <Note>
-  [`POST /virtual-account/create`](api/virtual-account-create) itself only returns the new VA's `id`. The fields below come from [`GET /virtual-account/detail`](api/virtual-account-detail), which you should call immediately after creation to get the banking details.
+  [`POST /virtual-account/create`](api/virtual-account-create) <Icon icon="link" size={14} /> itself only returns the new VA's `id`. The fields below come from [`GET /virtual-account/detail`](api/virtual-account-detail) <Icon icon="link" size={14} />, which you should call immediately after creation to get the banking details.
 </Note>
 
 <ResponseField name="payId" type="string">
@@ -135,9 +135,9 @@ AUD virtual accounts support a whitelist that restricts which bank accounts can 
 
 | Endpoint | Method | Description |
 | --- | --- | --- |
-| [`/virtual-account/create-aud-whitelist`](api/virtual-account-create-whitelist) | `POST` | Create a new whitelist for an AUD VA |
-| [`/virtual-account/update-aud-whitelist`](api/virtual-account-update-whitelist) | `POST` | Update an existing whitelist |
-| [`/virtual-account/get-aud-whitelist`](api/virtual-account-get-whitelist) | `GET` | Retrieve the current whitelist |
+| [`/virtual-account/create-aud-whitelist`](api/virtual-account-create-whitelist) <Icon icon="link" size={14} /> | `POST` | Create a new whitelist for an AUD VA |
+| [`/virtual-account/update-aud-whitelist`](api/virtual-account-update-whitelist) <Icon icon="link" size={14} /> | `POST` | Update an existing whitelist |
+| [`/virtual-account/get-aud-whitelist`](api/virtual-account-get-whitelist) <Icon icon="link" size={14} /> | `GET` | Retrieve the current whitelist |
 
 ### Whitelist Format
 
@@ -159,7 +159,7 @@ AUD virtual accounts support a whitelist that restricts which bank accounts can 
 When a whitelist is active, deposits from non-whitelisted accounts may be rejected or held for manual review.
 
 <Note>
-  [`POST /virtual-account/create-aud-whitelist`](api/virtual-account-create-whitelist) and [`.../update-aud-whitelist`](api/virtual-account-update-whitelist) return their `data` as an **array** of whitelist entries, matching [`GET /virtual-account/get-aud-whitelist`](api/virtual-account-get-whitelist) — not a single object. `sourceAccount.id` is technically optional on update, but omitting it sends `0` as the entry identifier, so always include it once you have it.
+  [`POST /virtual-account/create-aud-whitelist`](api/virtual-account-create-whitelist) <Icon icon="link" size={14} /> and [`.../update-aud-whitelist`](api/virtual-account-update-whitelist) <Icon icon="link" size={14} /> return their `data` as an **array** of whitelist entries, matching [`GET /virtual-account/get-aud-whitelist`](api/virtual-account-get-whitelist) <Icon icon="link" size={14} /> — not a single object. `sourceAccount.id` is technically optional on update, but omitting it sends `0` as the entry identifier, so always include it once you have it.
 </Note>
 
 ## Best Practices

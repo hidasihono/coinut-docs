@@ -44,13 +44,13 @@ Every step must complete before moving to the next.
     Register the customer's crypto wallet via [Crypto Addresses](crypto-addresses). The `to` field in the onramp flow must match an address already registered for this customer.
   </Step>
   <Step title="(Optional) Preview the rate">
-    Call [`GET /autoramp-flow/trade-preview`](api/autoramp-trade-preview) with `fromCurrency`, `toCurrency`, and `amount` for an indicative rate. This is a live estimate, not a locked quote — the flow always executes at the rate current when the deposit clears.
+    Call [`GET /autoramp-flow/trade-preview`](api/autoramp-trade-preview) <Icon icon="link" size={14} /> with `fromCurrency`, `toCurrency`, and `amount` for an indicative rate. This is a live estimate, not a locked quote — the flow always executes at the rate current when the deposit clears.
   </Step>
 </Steps>
 
 ## Implementation
 
-Create the onramp flow with [`POST /autoramp-flow/onramp`](api/autoramp-onramp). The virtual account is created automatically from `from`.
+Create the onramp flow with [`POST /autoramp-flow/onramp`](api/autoramp-onramp) <Icon icon="link" size={14} />. The virtual account is created automatically from `from`.
 
 ### Request fields
 
@@ -89,7 +89,7 @@ curl -X POST https://ramp.hexarails.ai/autoramp-flow/onramp \
 }
 ```
 
-The response only contains the new flow's `id`. Fetch [`GET /autoramp-flow/detail`](api/autoramp-detail) to retrieve the created virtual account's banking details (`payId`, `accountNumber`, `iban`, `bicSwift`) under `fromVirtualAccount` — display these to the customer.
+The response only contains the new flow's `id`. Fetch [`GET /autoramp-flow/detail`](api/autoramp-detail) <Icon icon="link" size={14} /> to retrieve the created virtual account's banking details (`payId`, `accountNumber`, `iban`, `bicSwift`) under `fromVirtualAccount` — display these to the customer.
 
 ### Error response
 

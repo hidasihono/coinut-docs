@@ -3,4 +3,66 @@ title: "IP Whitelisting & Access Control"
 description: "Restricting API access by IP and managing credentials."
 ---
 
-Content coming soon.
+Access to the Partner Ramp API is controlled by two independent mechanisms: request signing (see [Authentication](authentication)) and an optional per-partner IP whitelist, described below.
+
+## IP Whitelisting
+
+An IP whitelist restricts which source IPs are allowed to call the API with your credentials, as an additional layer on top of HMAC request signing.
+
+### Get the current whitelist
+
+Call [`GET /ip-white-list`](api/common-ip-whitelist-get) <Icon icon="link" size={14} />:
+
+```json
+{
+  "status": "SUCCESS",
+  "data": {
+    "ipWhiteList": ["115.236.134.118", "47.89.58.120"]
+  }
+}
+```
+
+### Update the whitelist
+
+Call [`POST /ip-white-list`](api/common-ip-whitelist-update) <Icon icon="link" size={14} /> with the full replacement list:
+
+```json
+{
+  "ipWhiteList": ["115.236.134.118", "47.89.58.120"]
+}
+```
+
+```json Response
+{
+  "status": "SUCCESS",
+  "data": {
+    "message": "IP whitelist updated successfully"
+  }
+}
+```
+
+<Warning>
+  `ipWhiteList` is a **full replacement**, not an incremental add — the array you send becomes the entire whitelist. Include every IP you want to keep allowed, not just the one you're adding.
+</Warning>
+
+<Note>
+  An **empty array** (`"ipWhiteList": []`) means **no IP restriction** — any source IP can call the API as long as requests are correctly signed. This is also the default for a newly onboarded partner.
+</Note>
+
+### Error response
+
+```json
+{
+  "status": "INVALID_PARAMETERS",
+  "message": "invalid parameters"
+}
+```
+
+## Request Signing
+
+IP whitelisting is a network-level restriction on top of, not a replacement for, request signing — every request still requires a valid `X-API-Key` / `X-Timestamp` / `X-Nonce` / `X-Signature` HMAC-SHA256 signature regardless of whitelist configuration. See [Authentication](authentication) for the full signing scheme.
+
+## Related
+
+- [Authentication](authentication) — HMAC-SHA256 request signing
+- [Webhooks](webhooks) — outgoing deliveries are signed with the same scheme, but are **not** subject to your IP whitelist (they originate from Coinut, not your infrastructure)

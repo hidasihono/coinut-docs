@@ -7,7 +7,7 @@ Every onramp, offramp, virtual account, and bank/crypto address is scoped to a c
 
 ## Creating a Customer
 
-Call [`POST /customer/create`](api/customer-create):
+Call [`POST /customer/create`](api/customer-create) <Icon icon="link" size={14} />:
 
 ```json
 {
@@ -52,7 +52,7 @@ PENDING → CONFIRMED | REJECTED
 Track the transition to `CONFIRMED` one of two ways:
 
 - **Webhook (recommended)** — subscribe to `CUSTOMER_APPROVED` / `CUSTOMER_REJECTED` / `CUSTOMER_DELETED`. See [Webhooks](webhooks) and [Payload Examples](webhooks-payload-examples).
-- **Polling** — call [`GET /customer/detail`](api/customer-detail) with `id`, `email`, or `externalId`.
+- **Polling** — call [`GET /customer/detail`](api/customer-detail) <Icon icon="link" size={14} /> with `id`, `email`, or `externalId`.
 
 Do not attempt to create virtual accounts, bank accounts, crypto addresses, or autoramp flows for a customer until they reach `CONFIRMED` — those calls will fail against a `PENDING` customer.
 
@@ -60,4 +60,4 @@ Do not attempt to create virtual accounts, bank accounts, crypto addresses, or a
 
 - [Crypto Addresses](crypto-addresses) and [Bank Accounts](bank-accounts) — registered once a customer is `CONFIRMED`
 - [Autoramp Flows](autoramp-flows) — the onramp/offramp flows a customer is connected to
-- [`GET /customer/list`](api/customer-list) — paginated customer listing with status/name filters
+- [`GET /customer/list`](api/customer-list) <Icon icon="link" size={14} /> — paginated customer listing with status/name filters
