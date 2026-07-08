@@ -17,7 +17,7 @@ Onramp lets your customers convert fiat currency (`AUD`, `EUR`, `GBP`, `SGD`, `U
 ## Architecture
 
 ```text
-Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detection -> Trade -> Crypto Transfer
+Partner App -> Coinut API -> Sumsub (KYC) -> Autoramp -> Trade -> Crypto Transfer
 ```
 
 ## Step-by-Step Implementation
@@ -43,13 +43,6 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     Customer status transitions: `PENDING` → `CONFIRMED` | `REJECTED` (a customer can also end up `DELETED`).
   </Step>
-  <Step title="Create Virtual Account">
-    Call `POST /virtual-account/create` with `customerId` and currency (`AUD`, `EUR`, `GBP`, `SGD`, or `USD`).
-
-    For AUD accounts, optionally include a `whitelist` to pre-register an allowed sender.
-
-    The create response only returns the new VA's `id` — it does not include banking details. Immediately follow up with `GET /virtual-account/detail?id=...` to fetch the PayID, account number, IBAN, and `bicSwift` (BSB for AUD, SWIFT/BIC for other currencies), and store those alongside the VA `id`.
-  </Step>
   <Step title="Add Crypto Address">
     Call `POST /crypto-address/add` with:
 
@@ -70,7 +63,7 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
         "customerId": "cust_abc123",
         "currency": "AUD"
       },
-      "to": "crypto_address_id_from_step_4"
+      "to": "crypto_address_id_from_step_3"
     }
     ```
 
@@ -81,6 +74,7 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
 
     - **AUD**: Display `payId` (e.g., `john.doe@example.com`), `bicSwift` (BSB), and `accountNumber`
     - **EUR / GBP / SGD / USD**: Display `iban` and `bicSwift` (SWIFT/BIC)
+    - **other currencies** : Contact Coinut support for the exact banking fields
 
     Generate a QR code for PayID to simplify mobile banking transfers.
   </Step>
@@ -99,6 +93,12 @@ Partner App -> Coinut API -> Sumsub (KYC) -> Virtual Account -> Deposit Detectio
     - `TRADE_SETTLED` — trade complete, crypto sent
 
     Or poll `GET /trade/list`.
+  </Step>
+  <Step title="Confirm Settlement">
+    The `TRADE_SETTLED` webhook includes `txHash`. Use it to verify the crypto transaction on-chain:
+
+    - ERC-20: [https://etherscan.io/tx/{txHash}](https://etherscan.io/tx/{txHash})
+    - TRC-20: [https://tronscan.org/#/transaction/{txHash}](https://tronscan.org/#/transaction/{txHash})
   </Step>
   <Step title="Confirm Settlement">
     There's no top-level `txHash` field. Once the crypto has been broadcast, the `TRADE_SETTLED` payload includes a nested `withdrawal.txId` — use that to verify the transaction on-chain:

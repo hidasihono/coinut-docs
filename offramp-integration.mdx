@@ -24,9 +24,9 @@ Partner App -> Coinut API -> Deposit Address -> Deposit Detection -> Trade -> Fi
 
 Before starting an offramp flow, ensure:
 
-- Customer has `CONFIRMED` KYC status
+- Customer has `CONFIRMCONFIRMED` KYC status
 - Customer's bank account has been added and verified
-- You have the bank account `id` from the `POST /bank-account/add` response
+- You have the bank account `idid` from the `POST /bank-account/add` response
 
 ## Step-by-Step Implementation
 
@@ -45,11 +45,11 @@ Before starting an offramp flow, ensure:
       "accountNo": "1234567890",
       "iban": "DE89370400440532013000",
       "swift": "DEUTDEFF",
-      "beneficiaryName": "John Doe"
+      "beneficiarybeneficiaryName": "John Doe"
     }
     ```
 
-    Store the returned `id`. Required fields vary by currency — see the [Bank Account Requirements](#bank-account-requirements) table below.
+    Store the returned `iid`. Required fields vary by currency — see the [Bank Account Requirements](#bank-account-requirements) table below.
   </Step>
   <Step title="Create Offramp Flow">
     Call `POST /autoramp-flow/offramp` with the crypto source and fiat destination:
@@ -65,13 +65,15 @@ Before starting an offramp flow, ensure:
     }
     ```
 
-    This creates a deposit address (or reuses an existing one for that customer/currency/network) and links incoming crypto to automatic fiat conversion. The response only contains the new flow's `id` — it does not include the deposit address itself.
+    This creates a deposit address (or reuses an existing one for that customer/currency/network) and links incoming crypto to automatic fiat conversion. The response only contains the new flow's `id` — it does not include the deposit address itself(or reuses an existing one for that customer/currency/network) and links incoming crypto to automatic fiat conversion. The response only contains the new flow's `id` — it does not include the deposit address itself.
   </Step>
   <Step title="Display Deposit Address">
-    Call `GET /deposit-address/detail` with the deposit address `id` to retrieve the address:
+    Call `GET /deposit-address/detail` with the deposit address `id` to retrieve the addressCall `GET /deposit-address/detail` with the deposit address `id` to retrieve the address:
 
     ```json
     {
+      "id": "7a99eddf-0930-41bc-b967-bea1520d66e4",
+      "status": "PENDING",
       "id": "7a99eddf-0930-41bc-b967-bea1520d66e4",
       "status": "PENDING",
       "address": "0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E",
@@ -84,10 +86,14 @@ Before starting an offramp flow, ensure:
       A newly created deposit address starts in `PENDING` status, and `address` is not populated until Coinut completes an internal approval step — it is **not** available synchronously on creation. Poll `GET /deposit-address/detail` (or listen for the `DEPOSIT_ADDRESS_APPROVED` webhook) and only display the address to the customer once `status` is no longer `PENDING` and `address` is populated. If `status` becomes `DEPOSIT_ADDRESS_REJECTED`, do not display an address — contact support.
     </Warning>
 
-    Once approved, display the address to the customer with a clear warning to send only on the specified network.
+    <Warning>
+      A newly created deposit address starts in `PENDING` status, and `address` is not populated until Coinut completes an internal approval step — it is **not** available synchronously on creation. Poll `GET /deposit-address/detail` (or listen for the `DEPOSIT_ADDRESS_APPROVED` webhook) and only display the address to the customer once `status` is no longer `PENDING` and `address` is populated. If `status` becomes `DEPOSIT_ADDRESS_REJECTED`, do not display an address — contact support.
+    </Warning>
+
+    Once approved, display theOnce approved, display the address to the customer with a clear warning to send only on the specified network.
   </Step>
   <Step title="Customer Sends Crypto">
-    Customer sends USDT to the displayed address on the specified network (`ETH` or `TRX`; `MATIC` is accepted by this endpoint's schema but is not yet supported end-to-end — stick to `ETH`/`TRX` for now). Provide clear instructions:
+    Customer sends USDT to the displayed address on the specified network (`ETH` or `TRX`; `MATIC` is accepted by this endpoint's schema but is not yet supported end-to-end — stick to `ETH`/`TRX` for now; `MATIC` is accepted by this endpoint's schema but is not yet supported end-to-end — stick to `ETH`/`TRX` for now). Provide clear instructions:
 
     - Minimum deposit amount
     - Correct network only (wrong network = lost funds)
@@ -97,6 +103,7 @@ Before starting an offramp flow, ensure:
     Listen for webhook events:
 
     - `DEPOSIT_ADDRESS_APPROVED` — address is live and ready to receive funds (see previous step)
+    - `DEPOSIT_ADDRESS_APPROVED` — address is live and ready to receive funds (see previous step)
     - `DEPOSIT_RECEIVED` — crypto detected on-chain
     - `DEPOSIT_APPROVED` — confirmations reached, deposit cleared
   </Step>
@@ -104,14 +111,28 @@ Before starting an offramp flow, ensure:
     After deposit approval:
 
     - `TRADE_CREATED` — fiat trade initiated
-    - `TRADE_SETTLED` — crypto-to-fiat trade executed. This confirms the trade, not the bank transfer — see the next step.
+    - `TRADE_SETTLED` — crypto-to-fiat trade executed. This confirms the trade, not the bank transfer — see the next step.crypto-to-fiat trade executed. This confirms the trade, not the bank transfer — see the next step.
   </Step>
   <Step title="Fiat Arrives">
-    `TRADE_SETTLED` confirms the crypto-to-fiat trade executed — it does **not** confirm the bank transfer landed. There is currently no separate webhook event for offramp bank-transfer completion (this is different from the standalone `/payment/create` payout feature, whose `PAYMENT_SETTLED` event does not apply to autoramp offramp flows). Treat `TRADE_SETTLED` as "funds are queued for payout," communicate an estimated settlement window to the customer based on the table below, and reconcile actual bank arrival through your own banking feed or by contacting Coinut support — don't build automated logic that expects a further webhook.
+    `TRADE_SETTLED` confirms the crypto-to-fiat trade executed — it does **not** confirm the bank transfer landed. There is currently no separate webhook event for offramp bank-transfer completion (this is different from the standalone `/payment/create` payout feature, whose `PAYMENT_SETTLED` event does not apply to autoramp offramp flows). Treat `TRADE_SETTLED` as "funds are queued for payout," communicate an estimated settlement window to the customer based on the table below, and reconcile actual bank arrival through your own banking feed or by contacting Coinut support — don't build automated logic that expects a further webhook.`TRADE_SETTLED` confirms the crypto-to-fiat trade executed — it does **not** confirm the bank transfer landed. There is currently no separate webhook event for offramp bank-transfer completion (this is different from the standalone `/payment/create` payout feature, whose `PAYMENT_SETTLED` event does not apply to autoramp offramp flows). Treat `TRADE_SETTLED` as "funds are queued for payout," communicate an estimated settlement window to the customer based on the table below, and reconcile actual bank arrival through your own banking feed or by contacting Coinut support — don't build automated logic that expects a further webhook.
   </Step>
 </Steps>
 
 ## Bank Account Requirements
+
+`currency` accepts only `GBP`, `EUR`, `AUD`, `SGD`, or `USD` — any other value, including `CAD`, is rejected. The API itself only requires `customerId`, `currency`, `bankName`, and either `accountNo` or `iban` on every currency; it does not enforce currency-specific combinations of `swift`/`aba`/`iban`. Still, supply the fields below for your customer's currency — payouts can be delayed or fail at the banking layer if the receiving bank needs a field the API didn't require you to send.
+
+| Currency | Recommended Fields | Optional Fields | Typical Settlement |
+| --- | --- | --- | --- |
+| USD | `bankName`, `accountNo`, `aba` and/or `swift` | `beneficiaryName`, `bankAddress` | 1-2 business days |
+| EUR | `bankName`, `iban`, `swift` | `beneficiaryName`, `bankAddress`, `accountNo` | 1 business day |
+| GBP | `bankName`, `iban`, `swift` | `beneficiaryName`, `bankAddress`, `accountNo` | 1 business day |
+| AUD | `bankName`, `accountNo` | `beneficiaryName` | 1 business day |
+| SGD | `bankName`, `accountNo`, `swift` | `beneficiaryName`, `bankAddress` | 1 business day |
+
+<Note>
+  There is no `sortCode`, `bsb`, or `accountName` field on this endpoint — the field for the account holder's name is `beneficiaryName`. If your AUD payout needs a BSB captured explicitly, check with Coinut support on current formatting expectations before going live.
+</Note>
 
 `currency` accepts only `GBP`, `EUR`, `AUD`, `SGD`, or `USD` — any other value, including `CAD`, is rejected. The API itself only requires `customerId`, `currency`, `bankName`, and either `accountNo` or `iban` on every currency; it does not enforce currency-specific combinations of `swift`/`aba`/`iban`. Still, supply the fields below for your customer's currency — payouts can be delayed or fail at the banking layer if the receiving bank needs a field the API didn't require you to send.
 
@@ -146,6 +167,171 @@ API_SECRET = os.environ["COINUT_API_SECRET"]
 
 
 def create_signature(method: str, path: str, query: str = "", body: dict = None):
+    # `query` must be the exact query string sent on the wire (no leading '?').
+    # Hardcoding "" here for a GET request that has query parameters will
+    # produce a signature the server rejects.
+    timestamp = str(int(time.time()))
+    nonce = str(uuid.uuid4())
+    host = "ramp.hexarails.ai"
+    request_body = "" if method.upper() == "GET" else json.dumps(body or {}, separators=(",", ":"))
+    body_hash = hashlib.sha256(request_body.encode()).hexdigest() if request_body else ""
+    canonical = "\n".join([method.upper(), host, path, query, body_hash, timestamp, nonce])
+    signature = hmac.new(API_SECRET.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+    return timestamp, nonce, signature
+
+
+def coinut_request(method: str, path: str, query: str = "", body: dict = None):
+    timestamp, nonce, signature = create_signature(method, path, query, body)
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-API-Key": API_KEY,
+        "X-Timestamp": timestamp,
+        "X-Nonce": nonce,
+        "X-Signature": signature,
+    }
+
+    url = f"{BASE_URL}{path}" + (f"?{query}" if query else "")
+    resp = requests.request(method, url, json=body, headers=headers)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def create_customer(name: str, email: str, external_id: str) -> str:
+    resp = coinut_request("POST", "/customer/create", body={
+        "name": name,
+        "email": email,
+        "type": "DEPOSITOR",
+        "isIndividual": True,
+        "externalId": external_id,
+    })
+    return resp["data"]["id"]
+
+
+def add_bank_account(
+    customer_id: str,
+    currency: str,
+    bank_name: str,
+    account_no: str,
+    **kwargs
+) -> str:
+    """Add a bank account. The API only requires bankName + (accountNo or iban);
+    supply the other fields your customer's currency needs — see Bank Account
+    Requirements above."""
+    body = {
+        "customerId": customer_id,
+        "currency": currency,
+        "bankName": bank_name,
+        "accountNo": account_no,
+        **kwargs,
+    }
+    resp = coinut_request("POST", "/bank-account/add", body=body)
+    return resp["data"]["id"]
+
+
+def create_offramp_flow(customer_id: str, network: str, bank_account_id: str):
+    return coinut_request("POST", "/autoramp-flow/offramp", body={
+        "from": {
+            "customerId": customer_id,
+            "currency": "USDT",  # "USDT" or "USDC"
+            "network": network,  # "ETH" or "TRX" today; "MATIC" accepted but not fully supported yet
+        },
+        "to": bank_account_id,
+    })
+
+
+def get_deposit_address(deposit_address_id: str) -> dict:
+    resp = coinut_request("GET", "/deposit-address/detail", query=f"id={deposit_address_id}")
+    return resp["data"]
+
+
+def execute_offramp(user: dict, bank_details: dict):
+    """Full offramp flow for a user."""
+    # Step 1: Create customer (wait for CUSTOMER_APPROVED webhook)
+    customer_id = create_customer(user["name"], user["email"], user["id"])
+
+    # Step 2: Add bank account
+    bank_account_id = add_bank_account(
+        customer_id=customer_id,
+        currency=bank_details["currency"],
+        bank_name=bank_details["bank_name"],
+        account_no=bank_details["account_no"],
+        swift=bank_details.get("swift"),
+        iban=bank_details.get("iban"),
+        aba=bank_details.get("aba"),
+        beneficiaryName=user["name"],
+    )
+
+    # Step 3: Create offramp flow — response only contains the flow `id`,
+    # not the deposit address. The `from` object here creates or reuses a
+    # deposit address for this customer/currency/network.
+    flow = create_offramp_flow(customer_id, bank_details["network"], bank_account_id)
+
+    # Step 4: Fetch the deposit address separately. It won't be populated
+    # (status stays PENDING, address is null) until Coinut approves it —
+    # poll this or wait for DEPOSIT_ADDRESS_APPROVED before showing it to
+    # the customer. `flow["data"]["id"]` here is the flow id, not the
+    # deposit address id — look up the deposit address via
+    # GET /deposit-address/list filtered by customerId/currency/network
+    # to get its id, then pass that id in.
+
+    return {
+        "customerId": customer_id,
+        "bankAccountId": bank_account_id,
+        "flowId": flow["data"]["id"],
+    }
+
+
+# ── Webhook Handler (Flask) ──────────────────────────
+# Note: verify the X-Signature header (see the Webhooks page) before
+# trusting the payload in production — omitted here for brevity.
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route("/webhooks/coinut", methods=["POST"])
+def handle_webhook():
+    event = request.json.get("event")
+    payload = request.json.get("payload")
+
+    handlers = {
+        "DEPOSIT_ADDRESS_APPROVED": handle_deposit_address_approved,
+        "DEPOSIT_RECEIVED": handle_deposit_received,
+        "DEPOSIT_APPROVED": handle_deposit_approved,
+        "TRADE_CREATED": handle_trade_created,
+        "TRADE_SETTLED": handle_trade_settled,
+    }
+
+    handler = handlers.get(event)
+    if handler:
+        handler(payload)
+
+    return jsonify({"status": "ok"})
+
+
+def handle_deposit_address_approved(payload):
+    print(f"Deposit address ready: {payload['address']}")
+    # Now safe to display the address to the customer
+
+
+def handle_deposit_received(payload):
+    print(f"Deposit received: {payload['amount']} {payload['currency']}")
+    # Notify customer that funds are being processed
+
+
+def handle_deposit_approved(payload):
+    print(f"Deposit approved. Trade will execute shortly.")
+
+
+def handle_trade_created(payload):
+    print(f"Trade created: {payload['id']}")
+
+
+def handle_trade_settled(payload):
+    print(f"Trade settled — crypto converted. Fiat payout is now queued; "
+          f"bank arrival is not confirmed by a webhook today.")
+    # Send customer notification with an estimated settlement window,
+    # not a "funds arrived" confirmquery: str = "", body: dict = None):
     # `query` must be the exact query string sent on the wire (no leading '?').
     # Hardcoding "" here for a GET request that has query parameters will
     # produce a signature the server rejects.
@@ -414,6 +600,95 @@ async function executeOfframp(customerId, network, bankAccountId) {
   };
 }
 
+module.exports = { addBankAccount, createOfframpFlow, getDepositAddress// `query` must be the exact query string sent on the wire (no leading '?').
+// Hardcoding '' here for a GET request that has query parameters will
+// produce a signature the server rejects.
+function createSignature(method, path, query = '', body = {}) {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const nonce = crypto.randomUUID();
+  const host = new URL(BASE_URL).host;
+  const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body);
+  const bodyHash = requestBody
+    ? crypto.createHash('sha256').update(requestBody).digest('hex')
+    : '';
+  const canonical = [
+    method.toUpperCase(),
+    host,
+    path,
+    query,
+    bodyHash,
+    timestamp,
+    nonce,
+  ].join('\n');
+  const signature = crypto.createHmac('sha256', API_SECRET).update(canonical).digest('hex');
+  return { timestamp, nonce, signature };
+}
+
+async function coinutRequest(method, path, { query = '', body } = {}) {
+  const { timestamp, nonce, signature } = createSignature(method, path, query, body);
+
+  // Resolve to the response BODY (the `{status, data}` envelope) — callers
+  // below destructure `.data` off this to get the actual payload.
+  const response = await axios({
+    method,
+    url: `${BASE_URL}${path}${query ? '?' + query : ''}`,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': API_KEY,
+      'X-Timestamp': timestamp,
+      'X-Nonce': nonce,
+      'X-Signature': signature,
+    },
+    data: body,
+  });
+  return response.data;
+}
+
+// The API only requires bankName + (accountNo or iban); pass whatever
+// currency-appropriate fields your customer's bank needs — see Bank Account
+// Requirements above. There is no `bsb`, `sortCode`, or `accountName` field;
+// use `beneficiaryName`.
+async function addBankAccount(customerId, currency, bankDetails) {
+  const body = {
+    customerId,
+    currency,
+    ...bankDetails,
+  };
+
+  const { data } = await coinutRequest('POST', '/bank-account/add', { body });
+  return data.id;
+}
+
+async function createOfframpFlow(customerId, network, bankAccountId) {
+  const { data } = await coinutRequest('POST', '/autoramp-flow/offramp', {
+    body: {
+      from: { customerId, currency: 'USDT', network },
+      to: bankAccountId,
+    },
+  });
+  return data; // { id } — the flow id, not a deposit address
+}
+
+async function getDepositAddress(depositAddressId) {
+  const { data } = await coinutRequest('GET', '/deposit-address/detail', {
+    query: `id=${depositAddressId}`,
+  });
+  return data; // { id, status, address, network, currency } — address is
+  // null and status is 'PENDING' until Coinut approves it
+}
+
+// Execute full offramp
+async function executeOfframp(customerId, network, bankAccountId) {
+  const flow = await createOfframpFlow(customerId, network, bankAccountId);
+
+  return {
+    flowId: flow.id,
+    // Look up the deposit address separately via GET /deposit-address/list
+    // filtered by customerId/currency/network, then call getDepositAddress()
+    // with its id once you have it.
+  };
+}
+
 module.exports = { addBankAccount, createOfframpFlow, getDepositAddress, executeOfframp };
 ```
 
@@ -427,6 +702,110 @@ interface BankDetails {
   bankName: string;
   accountNo: string;
   beneficiaryName?: string;
+  swift?: string;
+  iban?: string;
+  aba?: string;
+  bankCountry?: string;
+  bankAddress?: string;
+  institutionNumber?: string;
+  transit?: string;
+}
+
+interface OfframpFlow {
+  id: string; // flow id — NOT a deposit address
+}
+
+interface DepositAddress {
+  id: string;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'DELETED';
+  address: string | null; // null until status leaves PENDING
+  network: 'ETH' | 'TRX' | 'MATIC';
+  currency: 'USDT' | 'USDC';
+}
+
+export class CoinutOfframpClient {
+  private apiKey: string;
+  private apiSecret: string;
+
+  constructor(apiKey: string, apiSecret: string) {
+    this.apiKey = apiKey;
+    this.apiSecret = apiSecret;
+  }
+
+  // `query` must be the exact query string sent on the wire (no leading '?').
+  // Hardcoding '' here for a GET request that has query parameters will
+  // produce a signature the server rejects.
+  private createSignature(
+    method: string,
+    path: string,
+    query = '',
+    body?: object
+  ): { timestamp: string; nonce: string; signature: string } {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const nonce = crypto.randomUUID();
+    const host = new URL(BASE_URL).host;
+    const requestBody = method.toUpperCase() === 'GET' ? '' : JSON.stringify(body ?? {});
+    const bodyHash = requestBody
+      ? crypto.createHash('sha256').update(requestBody).digest('hex')
+      : '';
+    const canonical = [
+      method.toUpperCase(),
+      host,
+      path,
+      query,
+      bodyHash,
+      timestamp,
+      nonce,
+    ].join('\n');
+    const signature = crypto.createHmac('sha256', this.apiSecret).update(canonical).digest('hex');
+    return { timestamp, nonce, signature };
+  }
+
+  private async request<T>(
+    method: string,
+    path: string,
+    { query = '', body }: { query?: string; body?: object } = {}
+  ): Promise<T> {
+    const { timestamp, nonce, signature } = this.createSignature(method, path, query, body);
+
+    const response = await axios({
+      method,
+      url: `${BASE_URL}${path}${query ? '?' + query : ''}`,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': this.apiKey,
+        'X-Timestamp': timestamp,
+        'X-Nonce': nonce,
+        'X-Signature': signature,
+      },
+      data: body,
+    });
+    // Unwrap to the payload inside the `{status, data}` envelope.
+    return response.data.data as T;
+  }
+
+  // The API only requires bankName + (accountNo or iban); pass whatever
+  // currency-appropriate fields your customer's bank needs. There is no
+  // `bsb`, `sortCode`, or `accountName` field — use `beneficiaryName`.
+  async addBankAccount(customerId: string, currency: string, details: BankDetails): Promise<string> {
+    const response = await this.request<{ id: string }>('POST', '/bank-account/add', {
+      body: { customerId, currency, ...details },
+    });
+    return response.id;
+  }
+
+  async createOfframpFlow(customerId: string, network: 'ETH' | 'TRX', bankAccountId: string): Promise<OfframpFlow> {
+    return this.request<OfframpFlow>('POST', '/autoramp-flow/offramp', {
+      body: { from: { customerId, currency: 'USDT', network }, to: bankAccountId },
+    });
+  }
+
+  // Poll this (or wait for the DEPOSIT_ADDRESS_APPROVED webhook) before
+  // showing the address to the customer — `address` is null immediately
+  // after creation.
+  async getDepositAddress(depositAddressId: string): Promise<DepositAddress> {
+    return this.request<DepositAddress>('GET', '/deposit-address/detail', {
+      query: `id=${depositAddressId}`beneficiaryName?: string;
   swift?: string;
   iban?: string;
   aba?: string;
@@ -551,7 +930,7 @@ curl -X POST https://ramp.hexarails.ai/bank-account/add \
     "accountNo": "1234567890",
     "iban": "DE89370400440532013000",
     "swift": "DEUTDEFF",
-    "beneficiaryName": "John Doe"
+    "beneficiarybeneficiaryName": "John Doe"
   }'
 
 # Create Offramp Flow
@@ -575,10 +954,11 @@ curl -X POST https://ramp.hexarails.ai/autoramp-flow/offramp \
 
 ## Go-Live Checklist
 
-- Bank account validation working for all target currencies (`GBP`, `EUR`, `AUD`, `SGD`, `USD` — not `CAD`)
-- Deposit address approval flow tested in sandbox, including the `DEPOSIT_ADDRESS_APPROVED` wait before displaying an address
+- Bank account validation working for all target currencies (`GBP`, `EUR`, `AUD`, `SGD`, `USD` — not `CAD`) (`GBP`, `EUR`, `AUD`, `SGD`, `USD` — not `CAD`)
+- Deposit address approval flow tested in sandbox, including the `DEPOSIT_ADDRESS_APPROVED` wait before displaying an addressapproval flow tested in sandbox, including the `DEPOSIT_ADDRESS_APPROVED` wait before displaying an address
 - End-to-end flow verified with test transfers
-- Webhook handlers for `DEPOSIT_ADDRESS_APPROVED`, `DEPOSIT_RECEIVED`, `DEPOSIT_APPROVED`, `TRADE_CREATED`, and `TRADE_SETTLED`
+- Webhook handlers for `DEPOSIT_ADDRESS_APPROVED`, `DEPOSIT_RECEIVED`, `DEPOSIT_APPROVED`, `TRADE_CREATED`, and `TRADE_SETTLEDDEPOSIT_ADDRESS_APPROVED`, `DEPOSIT_RECEIVED`, `DEPOSIT_APPROVED`, `TRADE_CREATED`, and `TRADE_SETTLED`
+- Customer-facing copy that doesn't promise a "funds arrived" webhook after `TRADE_SETTLED` — reconcile bank settlement through your own banking feed
 - Customer-facing copy that doesn't promise a "funds arrived" webhook after `TRADE_SETTLED` — reconcile bank settlement through your own banking feed
 - Error handling for insufficient funds and invalid addresses
 - Banking cutoff times documented for customer communication

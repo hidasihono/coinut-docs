@@ -384,17 +384,25 @@ For crypto deposits, use the standard URI format:
 {currency}:{address}?network={network}
 ```
 
-**Example for ERC-20 USDT**:
+For crypto deposits, use the standard URI format:
 
 ```text
-ethereum:0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E?network=ETH
+{currency}:{address}?network={network}
 ```
 
-**Example for TRC-20 USDT**:
+**Example for ERC-20 USDTExample for ERC-20 USDT**:
 
 ```text
-tron:TXYZ1234567890...?network=TRX
+ethereum:0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E?network=ETHethereum:0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E?network=ETH
 ```
+
+**Example for TTRC-20 USDT**:
+
+```text
+tron:TXYZ1234567890...?network=TRXtron:TXYZ1234567890...?network=TRX
+```
+
+### Simple Crypto QR Generator
 
 ### Simple Crypto QR Generator
 
@@ -416,10 +424,27 @@ const qr = await generateCryptoQR(
   '0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E',
   'ETH',
   'ethereum'
+);const QRCode = require('qrcode');
+
+async function generateCryptoQR(address, network, currency = 'ethereum') {
+  const uri = `${currency}:${address}?network=${network}`;
+  return QRCode.toDataURL(uri, {
+    width: 256,
+    margin: 2,
+    errorCorrectionLevel: 'M',
+  });
+}
+
+// Usage — `address` must come from GET /deposit-address/detail once its
+// status has left PENDING, not a value you construct yourself.
+const qr = await generateCryptoQR(
+  '0x742d35Cc6634C0532925a3b8D4C9db96590f6C7E',
+  'ETH',
+  'ethereum'
 );
 ```
 
-## Integration Flow
+## Integration FlowIntegration Flow
 
 <Steps>
   <Step title="Create VA">
@@ -432,7 +457,25 @@ const qr = await generateCryptoQR(
     Use one of the code examples above to generate a QR code from `payid:{payId}`.
   </Step>
   <Step title="Display in UI">
-    Embed the QR code in your payment page alongside the text PayID and `bicSwift` (BSB) + Account Number — there's a single `bicSwift` field for this, not a separate `bsb` field.
+    Embed the QR code in your payment page alongside the text PayID and `bicSwift` (BSB) \+ Account Number — there's a single `bicSwift` field for this, not a separate `bsb` field.
+  </Step>
+  <Step title="Customer Scans">
+    Customer opens their banking app, scans the QR code, enters the amount, and confirms.
+  </Step>
+  <Step title="Payment Arrives">
+    Your webhook endpoint receives a `DEPOSIT_RECEIVED` event once the transfer is detected. On its own, this only records the deposit against the customer — it does **not** automatically convert to crypto or trigger any downstream processing unless this VA is also linked to an onramp flow (`POST /autoramp-flow/onramp`, see the [Onramp Integration](onramp-integration) guide). If you only need to receive and reconcile fiat, `DEPOSIT_RECEIVED` (and `DEPOSIT_APPROVED` once cleared) is all you need to act on.
+  </Step>
+  <Step title="Create VA">
+    Call `POST /virtual-account/create` with `customerId` and `currency`.
+  </Step>
+  <Step title="Fetch the PayID">
+    The create response only returns the new VA's `id` — it does not include `payId`. Immediately call `GET /virtual-account/detail?id=...` and read `payId` from that response instead.
+  </Step>
+  <Step title="Generate QR">
+    Use one of the code examples above to generate a QR code from `payid:{payId}`.
+  </Step>
+  <Step title="Display in UI">
+    Embed the QR code in your payment page alongside the text PayID and `bicSwift` (BSB) \+ Account Number — there's a single `bicSwift` field for this, not a separate `bsb` field.
   </Step>
   <Step title="Customer Scans">
     Customer opens their banking app, scans the QR code, enters the amount, and confirms.
@@ -442,7 +485,25 @@ const qr = await generateCryptoQR(
   </Step>
 </Steps>
 
-## Testing
+## TestingTesting
+
+Verify your QR codes before deploying:
+
+1. **Online scanner**: Use an online QR decoder to verify the content matches `payid:{address}`
+2. **Banking app test**: Scan with a real Australian banking app (CommBank, ANZ, etc.)
+3. **Edge cases**: Test with different phone cameras, lighting conditions, and screen sizes
+
+### Quick Test Script
+
+```bash
+# Install zbar-tools (Linux/Mac)
+# brew install zbar (Mac)
+# apt-get install zbar-tools (Linux)
+
+# Decode a generated QR image
+zbarimg --raw payid-qr.png
+# Expected output: payid:john.doe@example.com
+```
 
 Verify your QR codes before deploying:
 
