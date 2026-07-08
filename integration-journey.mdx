@@ -6,72 +6,100 @@ description: "The end-to-end partner journey: customer, address, autoramp flow, 
 This page walks through the full onramp journey end to end, at a glance — from creating a customer to confirming on-chain settlement. Each step links to the page with full details, request/response fields, and edge cases. Offramp follows the mirror sequence — see [Offramp Integration](offramp-integration).
 
 <Steps>
-  <Step title="Create Customer">
-    Call [`POST /customer/create`](api/customer-create) with name, email, `type="DEPOSITOR"`, and `isIndividual=true`.
+  <Step title="Create Customer" icon="user-plus">
+    <Card>
+      Call [`POST /customer/create`](api/customer-create) with name, email, `type="DEPOSITOR"`, and `isIndividual=true`.
 
-    ```json
-    {
-      "name": "John Doe",
-      "email": "john@example.com",
-      "type": "DEPOSITOR",
-      "isIndividual": true,
-      "externalId": "user_12345"
-    }
-    ```
+      ```json
+      {
+        "name": "John Doe",
+        "email": "john@example.com",
+        "type": "DEPOSITOR",
+        "isIndividual": true,
+        "externalId": "user_12345"
+      }
+      ```
 
-    See [Customer Lifecycle](customer-lifecycle) for the full field reference.
+      See [Customer Lifecycle](customer-lifecycle) for the full field reference.
+    </Card>
   </Step>
-  <Step title="Wait for KYC Approval">
-    Listen for the `CUSTOMER_APPROVED` webhook event. You can also poll [`GET /customer/detail`](api/customer-detail) to check status.
+  <Step title="Wait for KYC Approval" icon="shield-check">
+    <Card>
+      Listen for the `CUSTOMER_APPROVED` webhook event. You can also poll [`GET /customer/detail`](api/customer-detail) to check status.
 
-    Customer status transitions: `PENDING` → `CONFIRMED` | `REJECTED` (a customer can also end up `DELETED`). See [Customer Lifecycle](customer-lifecycle).
+      Customer status transitions: `PENDING` → `CONFIRMED` | `REJECTED` (a customer can also end up `DELETED`). See [Customer Lifecycle](customer-lifecycle).
+    </Card>
   </Step>
-  <Step title="Add Crypto Address">
-    Call [`POST /crypto-address/add`](api/crypto-address-add) with `customerId`, `currency` (`USDT` or `USDC`), `address`, `label`, and optionally `network` (`ETH`, `TRX`, or `MATIC`).
+  <Step title="Add Crypto Address" icon="wallet">
+    <Card>
+      Call [`POST /crypto-address/add`](api/crypto-address-add) with `customerId`, `currency` (`USDT` or `USDC`), `address`, `label`, and optionally `network` (`ETH`, `TRX`, or `MATIC`).
 
-    Store the returned `id` — you'll need it for the autoramp flow. See [Crypto Addresses](crypto-addresses).
+      Store the returned `id` — you'll need it for the autoramp flow. See [Crypto Addresses](crypto-addresses).
+    </Card>
   </Step>
-  <Step title="Create Onramp Flow">
-    Call [`POST /autoramp-flow/onramp`](api/autoramp-onramp) with the fiat source and crypto destination:
+  <Step title="Create Onramp Flow" icon="arrows-rotate">
+    <Card>
+      Call [`POST /autoramp-flow/onramp`](api/autoramp-onramp) with the fiat source and crypto destination:
 
-    ```json
-    {
-      "from": {
-        "customerId": "cust_abc123",
-        "currency": "AUD"
-      },
-      "to": "crypto_address_id_from_step_3"
-    }
-    ```
+      ```json
+      {
+        "from": {
+          "customerId": "cust_abc123",
+          "currency": "AUD"
+        },
+        "to": "crypto_address_id_from_step_3"
+      }
+      ```
 
-    This creates a virtual account automatically and links its deposits to automatic crypto conversion. The response only contains the new flow's `id` — see [Autoramp Flows](autoramp-flows).
+      This creates a virtual account automatically and links its deposits to automatic crypto conversion. The response only contains the new flow's `id` — see [Autoramp Flows](autoramp-flows).
+    </Card>
   </Step>
-  <Step title="Display Virtual Account to Customer">
-    The flow response doesn't include the virtual account's banking details directly — fetch [`GET /autoramp-flow/detail`](api/autoramp-detail) and read them from `fromVirtualAccount`. There's a single `bicSwift` field for every currency — it carries the BSB number for AUD and the SWIFT/BIC code for everything else. There's no separate "sort code" field.
+  <Step title="Display Virtual Account to Customer" icon="building-columns">
+    <Card>
+      The flow response doesn't include the virtual account's banking details directly — fetch [`GET /autoramp-flow/detail`](api/autoramp-detail) and read them from `fromVirtualAccount`. There's a single `bicSwift` field for every currency — it carries the BSB number for AUD and the SWIFT/BIC code for everything else. There's no separate "sort code" field.
 
-    - **AUD**: Display `payId`, `bicSwift` (BSB), and `accountNumber`
-    - **EUR / GBP / SGD / USD**: Display `iban` and `bicSwift` (SWIFT/BIC)
+      | Currency | Display |
+      | --- | --- |
+      | AUD | `payId`, `bicSwift` (BSB), `accountNumber` |
+      | EUR / GBP / SGD / USD | `iban`, `bicSwift` (SWIFT/BIC) |
 
-    See [Virtual Accounts](virtual-accounts-guide) and [QR Code Payments](qr-code-payments) for generating a scannable PayID QR.
+      See [Virtual Accounts](virtual-accounts-guide) and [QR Code Payments](qr-code-payments) for generating a scannable PayID QR.
+    </Card>
   </Step>
-  <Step title="Monitor Deposits">
-    Listen for `DEPOSIT_RECEIVED` (funds detected) and `DEPOSIT_APPROVED` (funds cleared), or poll [`GET /deposit/list`](api/deposit-list) with the customer ID. See [Deposits](deposits).
+  <Step title="Monitor Deposits" icon="arrow-down-to-line">
+    <Card>
+      Listen for `DEPOSIT_RECEIVED` (funds detected) and `DEPOSIT_APPROVED` (funds cleared), or poll [`GET /deposit/list`](api/deposit-list) with the customer ID. See [Deposits](deposits).
+    </Card>
   </Step>
-  <Step title="Track Trade">
-    After deposit approval, listen for `TRADE_CREATED` (trade initiated) and `TRADE_SETTLED` (trade complete, crypto sent), or poll [`GET /trade/list`](api/trade-list). See [Trades](trades).
+  <Step title="Track Trade" icon="chart-line">
+    <Card>
+      After deposit approval, listen for `TRADE_CREATED` (trade initiated) and `TRADE_SETTLED` (trade complete, crypto sent), or poll [`GET /trade/list`](api/trade-list). See [Trades](trades).
+    </Card>
   </Step>
-  <Step title="Confirm Settlement">
-    Once the crypto has been broadcast, the `TRADE_SETTLED` payload includes a nested `withdrawal.txId` — use that to verify the transaction on-chain:
+  <Step title="Confirm Settlement" icon="circle-check">
+    <Card>
+      Once the crypto has been broadcast, the `TRADE_SETTLED` payload includes a nested `withdrawal.txId` — use that to verify the transaction on-chain:
 
-    - ERC-20: `https://etherscan.io/tx/{withdrawal.txId}`
-    - TRC-20: `https://tronscan.org/#/transaction/{withdrawal.txId}`
+      | Network | Explorer |
+      | --- | --- |
+      | ERC-20 | `https://etherscan.io/tx/{withdrawal.txId}` |
+      | TRC-20 | `https://tronscan.org/#/transaction/{withdrawal.txId}` |
 
-    `withdrawal` may be absent on the first delivery of `TRADE_SETTLED` if the broadcast hasn't completed yet — treat it as optional. There is no top-level `txHash` field. See [Trades](trades).
+      `withdrawal` may be absent on the first delivery of `TRADE_SETTLED` if the broadcast hasn't completed yet — treat it as optional. There is no top-level `txHash` field. See [Trades](trades).
+    </Card>
   </Step>
 </Steps>
 
 ## Related
 
-- [Onramp Integration](onramp-integration) — implementation detail for the flow-creation call
-- [Offramp Integration](offramp-integration) — the mirror journey for crypto-to-fiat
-- [Webhooks](webhooks) — subscribe instead of polling at every step above
+<CardGroup cols={3}>
+  <Card title="Onramp Integration" icon="arrow-down-to-line" href="onramp-integration">
+    Implementation detail for the flow-creation call
+  </Card>
+  <Card title="Offramp Integration" icon="arrow-up-from-line" href="offramp-integration">
+    The mirror journey for crypto-to-fiat
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="webhooks">
+    Subscribe instead of polling at every step above
+  </Card>
+</CardGroup>
