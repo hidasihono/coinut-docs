@@ -37,20 +37,40 @@
             ]
           },
           {
-            "group": "Guides",
+            "group": "Customers & Compliance",
             "pages": [
-              "onramp-integration",
-              "offramp-integration",
-              "virtual-accounts-guide",
-              "qr-code-payments"
+              "customer-lifecycle",
+              "access-control"
             ]
           },
           {
-            "group": "Coverages",
+            "group": "Addresses",
             "pages": [
-              "coverage/blockchain",
-              "coverage/currencies",
-              "coverage/integration-model"
+              "crypto-addresses",
+              "bank-accounts"
+            ]
+          },
+          {
+            "group": "Virtual Accounts",
+            "pages": [
+              "virtual-accounts-guide"
+            ]
+          },
+          {
+            "group": "Autoramp & Transactions",
+            "pages": [
+              "autoramp-flows",
+              "deposits",
+              "trades",
+              "payments"
+            ]
+          },
+          {
+            "group": "Tutorials",
+            "pages": [
+              "onramp-integration",
+              "offramp-integration",
+              "qr-code-payments"
             ]
           },
           {
@@ -65,6 +85,14 @@
                 ]
               },
               "errors"
+            ]
+          },
+          {
+            "group": "Coverages",
+            "pages": [
+              "coverage/blockchain",
+              "coverage/currencies",
+              "coverage/integration-model"
             ]
           }
         ]
