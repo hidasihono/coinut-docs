@@ -1,0 +1,47 @@
+---
+title: "Currencies"
+description: "Supported fiat and stablecoin currencies across Virtual Accounts, Bank Accounts, and Payments."
+---
+
+## Fiat Currencies
+
+The current OpenAPI contract exposes the same fiat `currency` enum — `AUD`, `EUR`, `GBP`, `SGD`, `USD` — across Virtual Account creation, Bank Account creation, and the onramp flow entry (`OnrampFromDto`).
+
+| Currency | Virtual Account (onramp) | Bank Account (offramp payout) | Account Format |
+| --- | --- | --- | --- |
+| **AUD** | ✅ | ✅ | BSB + Account Number (`payId`, `bicSwift`, `accountNumber`) |
+| **EUR** | ✅ | ✅ | IBAN (`iban`, `bicSwift`) |
+| **GBP** | ✅ | ✅ | IBAN (`iban`, `bicSwift`) |
+| **SGD** | ✅ | ✅ | IBAN (`iban`, `bicSwift`) |
+| **USD** | ✅ | ✅ | IBAN (`iban`, `bicSwift`) |
+
+<Note>
+  SGD and USD are enabled in the current create schema for both Virtual Accounts and Bank Accounts. Confirm corridor-specific receiving/payout details with Coinut before shipping UX for these currencies — see the [Virtual Accounts Guide](/virtual-accounts-guide) for the full field breakdown.
+</Note>
+
+## Stablecoins
+
+| Currency | Used For |
+| --- | --- |
+| **USDT** | Crypto Address, Deposit Address, Offramp source, Payment `deductCurrency` |
+| **USDC** | Crypto Address, Deposit Address, Offramp source, Payment `deductCurrency` |
+
+See [Blockchains & Stablecoins](/coverage/blockchain) for which networks each stablecoin settles on.
+
+## Currency Usage by Flow
+
+| Flow | Fiat Side | Crypto Side |
+| --- | --- | --- |
+| **Onramp** | Customer deposits `AUD`/`EUR`/`GBP`/`SGD`/`USD` to a Virtual Account | Coinut settles `USDT`/`USDC` to the customer's crypto address |
+| **Offramp** | Coinut pays out `AUD`/`EUR`/`GBP`/`SGD`/`USD` to a customer bank account | Customer sends `USDT`/`USDC` to a Coinut deposit address |
+| **Payment** | Payout `currency` to a registered bank account | Balance debited via `deductCurrency` (`USDT` or `USDC`) |
+
+<Note>
+  `MockDepositRequestDto` (sandbox-only) accepts all seven currency codes (`EUR`, `GBP`, `SGD`, `USD`, `AUD`, `USDT`, `USDC`) in a single enum for simulating deposits — this is a sandbox testing convenience, not evidence of a unified currency type in production endpoints.
+</Note>
+
+## Related
+
+- [Virtual Accounts Guide](/virtual-accounts-guide) — fiat VA creation and field formats by currency
+- [Blockchains & Stablecoins](/coverage/blockchain) — stablecoin/network coverage
+- [Integration Models](/coverage/integration-model) — how currency choice fits your integration

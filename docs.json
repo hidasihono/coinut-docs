@@ -46,6 +46,14 @@
             ]
           },
           {
+            "group": "Coverages",
+            "pages": [
+              "coverage/blockchain",
+              "coverage/currencies",
+              "coverage/integration-model"
+            ]
+          },
+          {
             "group": "Core Concepts",
             "pages": [
               "webhooks",

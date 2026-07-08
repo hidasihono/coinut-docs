@@ -1,0 +1,47 @@
+---
+title: "Blockchains & Stablecoins"
+description: "Supported blockchain networks and stablecoins for crypto deposit addresses, crypto addresses, and offramp."
+---
+
+## Blockchain and Stablecoin Support Overview
+
+Coinut Partner Ramp settles crypto in stablecoins only. The table below outlines the current OpenAPI enum values for `currency` and `network` shared across the Crypto Address, Deposit Address, Offramp, and Payment APIs.
+
+### Supported Networks and Stablecoins
+
+| Network | USDT | USDC |
+| --- | --- | --- |
+| **Ethereum (ETH / ERC-20)** | ✅ | ✅ |
+| **Tron (TRX / TRC-20)** | ✅ | ✅ |
+| **Polygon (MATIC)** | ✅ | ✅ |
+
+<Note>
+  The OpenAPI schema lists the same `network` enum (`ETH`, `TRX`, `MATIC`) against both `USDT` and `USDC` wherever currency and network appear together (`CreateCryptoAddressRequestDto`, `CreateDepositAddressRequestDto`, `OfframpFromDto`). There is no separate per-pair compatibility table in the contract — confirm any corridor-specific restrictions with Coinut before enabling a currency/network combination in production.
+</Note>
+
+### Where Currency and Network Apply
+
+| API | Purpose | Currency Field | Network Field |
+| --- | --- | --- | --- |
+| `POST /crypto-address/add` | Register a customer's external wallet for onramp settlement | `currency`: `USDT`, `USDC` | `network` (optional): `ETH`, `TRX`, `MATIC` |
+| `POST /deposit-address/create` | Issue a Coinut-controlled deposit address for offramp | `currency`: `USDT`, `USDC` | `network`: `ETH`, `TRX`, `MATIC` |
+| `POST /autoramp-flow/offramp` (`from`) | Offramp flow entry — crypto source | `currency`: `USDT`, `USDC` | `network`: `ETH`, `TRX`, `MATIC` |
+| `POST /payment/create` | `deductCurrency` — stablecoin balance debited for a fiat payout | `deductCurrency`: `USDT`, `USDC` | — |
+
+<Note>
+  The legacy `GET /get-user` response and `POST /old/create-va` (see the `old/` routes) still expose a narrower `to_network` enum (`ETH`, `TRX` only — no `MATIC`). New integrations should use the current Crypto Address / Deposit Address / Autoramp APIs, which include `MATIC`.
+</Note>
+
+## Network Labels
+
+| Network Code | Chain | Token Standard |
+| --- | --- | --- |
+| `ETH` | Ethereum | ERC-20 |
+| `TRX` | Tron | TRC-20 |
+| `MATIC` | Polygon | Polygon (ERC-20 compatible) |
+
+## Related
+
+- [Onramp Integration](/onramp-integration) — customer crypto address setup for onramp settlement
+- [Offramp Integration](/offramp-integration) — deposit address creation for crypto-to-fiat flows
+- [Currencies](/coverage/currencies) — fiat currency and virtual account coverage

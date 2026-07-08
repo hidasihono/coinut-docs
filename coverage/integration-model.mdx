@@ -1,0 +1,73 @@
+---
+title: "Integration Models"
+description: "How to integrate Coinut Partner Ramp: Autoramp vs direct API orchestration, and customer type/role options."
+---
+
+Coinut Partner Ramp supports two integration paths and two customer-level dimensions you combine to model your product: how you drive the flow (Autoramp vs direct API calls), and how you classify each customer (type and individual vs corporate).
+
+## At a Glance
+
+| Mode | Best For | How It Works |
+| --- | --- | --- |
+| **Autoramp** | Individual customers, consumer apps | Single `/autoramp-flow/onramp` or `/autoramp-flow/offramp` call combining VA/deposit-address creation, KYC gating, and settlement into one flow |
+| **Omnibus** (direct API) | Enterprise, platforms, marketplaces | You call Virtual Account, Bank Account, Crypto Address, and Deposit Address APIs directly and orchestrate the sequencing yourself |
+
+<Note>
+  "Autoramp" maps directly to the `/autoramp-flow/*` endpoints in the OpenAPI contract (`create`, `onramp`, `offramp`, `detail`, `list`, `delete`). "Omnibus" is Coinut's narrative label (see [Introduction](/)) for the alternative of calling the underlying resource APIs — Virtual Account, Bank Account, Crypto Address, Deposit Address — directly rather than through the bundled flow; it is not a literal enum value in the current schema. Confirm the operational specifics of enterprise/pooled setups with Coinut before committing to an architecture.
+</Note>
+
+## Autoramp: Bundled Flow
+
+Use `/autoramp-flow/onramp` or `/autoramp-flow/offramp` to combine the fiat/crypto entry point, KYC gating, and settlement leg in one call.
+
+**Request shape:**
+
+- **Onramp** — `from` (customer `id` + fiat `currency`: `AUD`/`EUR`/`GBP`/`SGD`/`USD`), settling to the customer's crypto address
+- **Offramp** — `from` (customer `id` + stablecoin `currency`: `USDT`/`USDC` + `network`: `ETH`/`TRX`/`MATIC`), settling to the customer's bank account
+
+See [Onramp Integration](/onramp-integration) and [Offramp Integration](/offramp-integration) for the full step-by-step flow.
+
+## Direct API Orchestration
+
+Call the underlying resource APIs yourself when you need finer control than the bundled Autoramp flow gives you:
+
+- `POST /virtual-account/create` — fiat receiving account per customer/currency
+- `POST /bank-account/add` — payout destination for offramp
+- `POST /crypto-address/add` — customer wallet for onramp settlement
+- `POST /deposit-address/create` — Coinut-controlled address for offramp deposits
+- `POST /payment/create` — payout from your partner balance (`deductCurrency`: `USDT`/`USDC`) independent of any autoramp flow
+
+This path is appropriate if you're aggregating multiple end-customers behind your own ledger, running custom sequencing/retry logic, or need payouts that aren't tied to an inbound crypto/fiat deposit.
+
+## Customer Classification
+
+Every customer created via `POST /customer/create` carries two independent classification fields:
+
+| Field | Values | Notes |
+| --- | --- | --- |
+| `type` | `DEPOSITOR`, `PAYEE` | Enum on `CustomerTypeEnum`. Defaults to `DEPOSITOR`. All current example flows (onramp, offramp) use `DEPOSITOR` — `PAYEE` is defined in the schema but has no distinct behavior documented in the current codebase. Confirm the intended use of `PAYEE` with Coinut before relying on it. |
+| `isIndividual` | `true`, `false` | Individual vs corporate customer. Defaults to `true`. Affects KYC/KYB depth on the Sumsub side, not which APIs are available. |
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "type": "DEPOSITOR",
+  "isIndividual": true,
+  "externalId": "user_12345"
+}
+```
+
+## Choosing a Model
+
+- **Consumer app, individual end-users** → Autoramp + `isIndividual: true`
+- **Platform/marketplace with pooled liquidity, full control over customer experience** → Direct API orchestration
+- **Corporate customers** (treasury, B2B settlement) → Direct API orchestration + `isIndividual: false`, since KYB depth and bespoke bank-account/payout sequencing typically outgrow the single bundled Autoramp call
+
+## Related
+
+- [Introduction](/) — Autoramp vs Omnibus at the product level
+- [Onramp Integration](/onramp-integration)
+- [Offramp Integration](/offramp-integration)
+- [Currencies](/coverage/currencies)
+- [Blockchains & Stablecoins](/coverage/blockchain)
