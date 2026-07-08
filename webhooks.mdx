@@ -72,22 +72,6 @@ All webhooks:
 
 Each event type is also documented in the `WebhookEvent` schema in the [OpenAPI spec](/api-overview) (`components.schemas.WebhookEvent`), which lists every valid `event` enum value alongside the deprecated legacy names. See [Webhook Payload Examples](webhooks-payload-examples) for a full example payload of every event above.
 
-### Legacy events
-
-These dot-notation events are still delivered in production for backward compatibility, but are deprecated — build new integrations against the events table above instead. They use different, older payload shapes (`WebhookUserPayload`, `WebhookVaPayload`, `WebhookDepositPayload`, `WebhookTradePayload`).
-
-| Legacy event | Replaced by |
-| --- | --- |
-| `user.approved` | `CUSTOMER_APPROVED` |
-| `user.rejected` | `CUSTOMER_REJECTED` |
-| `va.approved` | `VIRTUAL_ACCOUNT_APPROVED` |
-| `va.rejected` | `VIRTUAL_ACCOUNT_REJECTED` |
-| `deposit.received` | `DEPOSIT_RECEIVED` |
-| `deposit.approved` | `DEPOSIT_APPROVED` |
-| `deposit.rejected` | `DEPOSIT_REJECTED` |
-| `trade.created` | `TRADE_CREATED` |
-| `trade.settled` | `TRADE_SETTLED` |
-
 ## Delivery & Reliability
 
 | Property | Value |
