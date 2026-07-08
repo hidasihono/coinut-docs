@@ -11,8 +11,9 @@ All webhooks:
 
 - Use the `POST` method
 - Send a JSON body
-- Accept any `2xx` response as a successful delivery — respond as soon as you've durably queued the event, since no delivery timeout is currently enforced (see [Webhook Delivery](#webhook-delivery))
-- Use the `{event, payload}` envelope shown in the examples below
+- Accept any `2xx` response as a successful delivery — respond as soon as you've durably queued the event, since no delivery timeout is currently enforced (see [Webhook Delivery](#webhook-delivery))Accept any `2xx` response as a successful delivery — respond as soon as you've durably queued the event, since no delivery timeout is currently enforced (see [Webhook Delivery](#webhook-delivery))
+- Use the `{event, payload}` envelope shown in the examples below`{event, payload}` envelope shown in the examples below
+- Are signed with the same HMAC-SHA256 scheme used for incoming requests (see [Signature Verification](#signature-verification))
 - Are signed with the same HMAC-SHA256 scheme used for incoming requests (see [Signature Verification](#signature-verification))
 
 ## Setting Up Webhooks
@@ -41,10 +42,10 @@ All webhooks:
     ```
   </Step>
   <Step title="Verify signature">
-    Every webhook is signed exactly like an incoming API request (see [Authentication](authentication)): the same four headers (`X-API-Key`, `X-Timestamp`, `X-Nonce`, `X-Signature`) are sent with the callback, built from the same HMAC-SHA256 canonical string. Verify it before trusting the payload — see [Signature Verification](#signature-verification) below for the exact construction.
+    Every webhook is signed exactly like an incoming API request (see [Authentication](authentication)): the same four headers (`X-API-Key`, `X-Timestamp`, `X-Nonce`, `X-Signature`) are sent with the callback, built from the same HMAC-SHA256 canonical string. Verify it before trusting the payload — see [Signature Verification](#signature-verification) below for the exact constructionEvery webhook is signed exactly like an incoming API request (see [Authentication](authentication)): the same four headers (`X-API-Key`, `X-Timestamp`, `X-Nonce`, `X-Signature`) are sent with the callback, built from the same HMAC-SHA256 canonical string. Verify it before trusting the payload — see [Signature Verification](#signature-verification) below for the exact construction.
   </Step>
   <Step title="Acknowledge receipt">
-    Return any `2xx` status as soon as you've durably stored or queued the event. There is currently no server-side delivery timeout, but you should still respond quickly and process asynchronously — a slow handler ties up a delivery worker rather than protecting you from anything. Failed deliveries are retried up to 5 times with increasing backoff (10 minutes, 1 hour, 1 day, 1 week), so your handler must be idempotent and safe to receive duplicate deliveries.
+    Return any `2xx` status as soon as you've durably stored or queued the event. There is currently no server-side delivery timeout, but you should still respond quickly and process asynchronously — a slow handler ties up a delivery worker rather than protecting you from anything. Failed deliveries are retried up to 5 times with increasing backoff (10 minutes, 1 hour, 1 day, 1 week), so your handler mustany `2xx` status as soon as you've durably stored or queued the event. There is currently no server-side delivery timeout, but you should still respond quickly and process asynchronously — a slow handler ties up a delivery worker rather than protecting you from anything. Failed deliveries are retried up to 5 times with increasing backoff (10 minutes, 1 hour, 1 day, 1 week), so your handler must be idempotent and safe to receive duplicate deliveries.
   </Step>
 </Steps>
 
@@ -53,12 +54,13 @@ All webhooks:
 | Property | Value |
 | --- | --- |
 | Method | `POST` |
-| Protocol | HTTPS strongly recommended. Note: the callback-URL field is not currently restricted to `https://` by validation, so a plain HTTP URL will be accepted — use HTTPS regardless, since payloads include customer and transaction data. |
-| Timeout | Not enforced by the sender today — the delivery attempt will wait indefinitely for your response. Respond promptly anyway; don't rely on this. |
-| Retries | Up to 5 total attempts per event |
-| Backoff | 10 minutes → 1 hour → 1 day → 1 week between attempts |
+| Protocol | HTTPS strongly recommended. Note: the callback-URL field is not currently restricted to `https://` by validation, so a plain HTTP URL will be accepted — use HTTPS regardless, since payloads include customer and transaction data.strongly recommended. Note: the callback-URL field is not currently restricted to `https://` by validation, so a plain HTTP URL will be accepted — use HTTPS regardless, since payloads include customer and transaction data. |
+| Timeout | Not enforced by the sender today — the delivery attempt will wait indefinitely for your response. Respond promptly anyway; don't rely on this.Not enforced by the sender today — the delivery attempt will wait indefinitely for your response. Respond promptly anyway; don't rely on this. |
+| Retries | Up to 5 total attempts per eventUp to 5 total attempts per event |
+| Backoff | 10 minutes → 1 hour → 1 day → 1 week between attempts10 minutes → 1 hour → 1 day → 1 week between attempts |
 | Success criteria | Any `2xx` response |
-| Deduplication | `event` \+ `payload.id` combination |
+| Success criteria | Any `2xx` response |
+| Deduplication | `event` \+ `payload.id.id` combination |
 
 ## Event Types
 
@@ -78,7 +80,7 @@ All webhooks:
 | `TRADE_SETTLED` | Trade completed | `TradeDetailDataDto` |
 | `PAYMENT_SETTLED` | Payment completed | `GetPaymentDetailDataDto` |
 
-### Legacy events
+### Legacy eventLegacy events
 
 These dot-notation events are still delivered in production for backward compatibility, but are deprecated — build new integrations against the events table above instead. They use different, older payload shapes (`WebhookUserPayload`, `WebhookVaPayload`, `WebhookDepositPayload`, `WebhookTradePayload`).
 
@@ -161,10 +163,6 @@ These dot-notation events are still delivered in production for backward compati
   }
 }
 ```
-
-<Note>
-  `deposit` is only present when the trade's originating deposit used the current deposit flow — for deposits made under the legacy flow, a `legacyDeposit` object (`{id, customerName}`, numeric `id`) is sent instead. `withdrawal.txId` is only present once the outgoing crypto transaction has been broadcast; it may be absent on early deliveries of this event.
-</Note>
 
 ```json PAYMENT_SETTLED
 {
@@ -271,3 +269,179 @@ def verify_webhook_signature(headers, body: dict, path: str, api_secret: str) ->
 <Tip>
   Test webhooks locally with [ngrok](https://ngrok.com). Run `ngrok http 3000`, then register the HTTPS tunnel URL as your callback endpoint. Coinut will deliver events to your local machine.
 </Tip>
+
+These dot-notation events are still delivered in production for backward compatibility, but are deprecated — build new integrations against the events table above instead. They use different, older payload shapes (`WebhookUserPayload`, `WebhookVaPayload`, `WebhookDepositPayload`, `WebhookTradePayload`).
+
+| Legacy event | Replaced by |
+| --- | --- |
+| `user.approved` | `CUSTOMER_APPROVED` |
+| `user.rejected` | `CUSTOMER_REJECTED` |
+| `va.approved` | `VIRTUAL_ACCOUNT_APPROVED` |
+| `va.rejected` | `VIRTUAL_ACCOUNT_REJECTED` |
+| `deposit.received` | `DEPOSIT_RECEIVED` |
+| `deposit.approved` | `DEPOSIT_APPROVED` |
+| `deposit.rejected` | `DEPOSIT_REJECTED` |
+| `trade.created` | `TRADE_CREATED` |
+| `trade.settled` | `TRADE_SETTLED` |
+
+## Webhook Payload Examples
+
+<CodeGroup>
+
+```json CUSTOMER_APPROVED
+{
+  "event": "CUSTOMER_APPROVED",
+  "payload": {
+    "id": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "realName": "Alice Smith",
+    "email": "user@example.com",
+    "externalId": "partner-customer-001",
+    "sumsubLink": "https://in.sumsub.com/websdk/p/sbx_4pe01gDQ0uXG5lVw",
+    "status": "CONFIRMED"
+  }
+}
+```
+
+```json DEPOSIT_RECEIVED
+{
+  "event": "DEPOSIT_RECEIVED",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "type": "FIAT",
+    "currency": "AUD",
+    "amount": "1500.00",
+    "receiverVirtualAccount": {
+      "id": "va_123",
+      "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+      "customerName": "Alice Smith",
+      "currency": "AUD",
+      "accountNumber": "12345678",
+      "bicSwift": "123-456",
+      "payId": "alice@example.com",
+      "status": "VERIFIED",
+      "bankName": "Example Bank"
+    },
+    "txid": "tx_external_001",
+    "voutIndexTxKey": "tx_external_001:0",
+    "status": "RECEIVED",
+    "timestamp": "2026-03-12T17:22:04Z"
+  }
+}
+```
+
+```json TRADE_SETTLED
+{
+  "event": "TRADE_SETTLED",
+  "payload": {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "fromAmount": "1500.00",
+    "fromCurrency": "AUD",
+    "toAmount": "1498.50",
+    "toCurrency": "USDT",
+    "status": "SETTLED",
+    "createTime": "2026-03-12T17:23:15Z",
+    "deposit": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "customerName": "Alice Smith"
+    },
+    "withdrawal": {
+      "txId": "0xabc123..."
+    }
+  }
+}
+```
+
+```json PAYMENT_SETTLED
+{
+  "event": "PAYMENT_SETTLED",
+  "payload": {
+    "id": "12209d2d-47b4-4a07-8a01-b49052cd8204",
+    "status": "CONFIRMED",
+    "rate": "0.9950",
+    "deductAmount": "180.50",
+    "deductCurrency": "USDT",
+    "receivedCurrency": "USD",
+    "receivedAmount": "100.00",
+    "bankCharge": "80.00",
+    "reference": "payment-123456",
+    "createTime": "2026-03-12 17:22:04",
+    "bankAccount": {
+      "bankName": "DBS Bank",
+      "accountNo": "1234567890",
+      "bankCountry": "SG",
+      "bankAddress": "12 Marina Blvd",
+      "swift": "DBSSSGSG",
+      "beneficiaryName": "Alice Smith",
+      "beneficiaryAddress": "1 Example Street"
+    }
+  }
+}
+```
+
+</CodeGroup>
+
+## Signature Verification
+
+Every webhook delivery is signed with the same HMAC-SHA256 scheme documented on the [Authentication](authentication) page for incoming requests — using your API key/secret pair, not a separate webhook secret. The request carries the same four headers:
+
+| Header | Description |
+| --- | --- |
+| `X-API-Key` | Your API key |
+| `X-Timestamp` | Unix timestamp in seconds, at send time |
+| `X-Nonce` | A random string, unique per delivery |
+| `X-Signature` | HMAC-SHA256 hex digest of the canonical string below |
+
+Build the same newline-delimited canonical string used for request signing, then verify it with HMAC-SHA256 using your API secret:
+
+```text
+POST
+<your host>
+<your webhook path>
+                          <- empty query-string segment
+sha256(raw request body)
+<X-Timestamp value>
+<X-Nonce value>
+```
+
+<CodeGroup>
+
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhookSignature(req, apiSecret) {
+  const { 'x-timestamp': timestamp, 'x-nonce': nonce, 'x-signature': signature } = req.headers;
+  const host = req.headers.host;
+  const path = req.path; // e.g. '/webhooks/coinut'
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(req.body)).digest('hex');
+
+  const canonical = ['POST', host, path, '', bodyHash, timestamp, nonce].join('\n');
+  const expected = crypto.createHmac('sha256', apiSecret).update(canonical).digest('hex');
+
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+```
+
+```python Python
+import hmac
+import hashlib
+import json
+
+def verify_webhook_signature(headers, body: dict, path: str, api_secret: str) -> bool:
+    timestamp = headers["X-Timestamp"]
+    nonce = headers["X-Nonce"]
+    signature = headers["X-Signature"]
+    host = headers["Host"]
+
+    body_hash = hashlib.sha256(json.dumps(body, separators=(",", ":")).encode()).hexdigest()
+    canonical = "\n".join(["POST", host, path, "", body_hash, timestamp, nonce])
+    expected = hmac.new(api_secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+    return hmac.compare_digest(expected, signature)
+```
+
+</CodeGroup>
+
+<Warning>
+  The exact JSON serialization of the body must match byte-for-byte on both sides for the body hash to match — verify against the **raw request body bytes** your framework received, not a value you've re-serialized after parsing, since key ordering or whitespace differences will produce a different hash.
+</Warning>
