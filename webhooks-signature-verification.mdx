@@ -1,0 +1,69 @@
+---
+title: "Webhook Signature Verification"
+description: "Verify the HMAC-SHA256 signature on every Coinut webhook delivery."
+---
+
+Every webhook delivery is signed with the same HMAC-SHA256 scheme documented on the [Authentication](authentication) page for incoming requests — using your API key/secret pair, not a separate webhook secret. The request carries the same four headers:
+
+| Header | Description |
+| --- | --- |
+| `X-API-Key` | Your API key |
+| `X-Timestamp` | Unix timestamp in seconds, at send time |
+| `X-Nonce` | A random string, unique per delivery |
+| `X-Signature` | HMAC-SHA256 hex digest of the canonical string below |
+
+Build the same newline-delimited canonical string used for request signing, then verify it with HMAC-SHA256 using your API secret:
+
+```text
+POST
+<your host>
+<your webhook path>
+                          <- empty query-string segment
+sha256(raw request body)
+<X-Timestamp value>
+<X-Nonce value>
+```
+
+<CodeGroup>
+
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhookSignature(req, apiSecret) {
+  const { 'x-timestamp': timestamp, 'x-nonce': nonce, 'x-signature': signature } = req.headers;
+  const host = req.headers.host;
+  const path = req.path; // e.g. '/webhooks/coinut'
+  const bodyHash = crypto.createHash('sha256').update(JSON.stringify(req.body)).digest('hex');
+
+  const canonical = ['POST', host, path, '', bodyHash, timestamp, nonce].join('\n');
+  const expected = crypto.createHmac('sha256', apiSecret).update(canonical).digest('hex');
+
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+}
+```
+
+```python Python
+import hmac
+import hashlib
+import json
+
+def verify_webhook_signature(headers, body: dict, path: str, api_secret: str) -> bool:
+    timestamp = headers["X-Timestamp"]
+    nonce = headers["X-Nonce"]
+    signature = headers["X-Signature"]
+    host = headers["Host"]
+
+    body_hash = hashlib.sha256(json.dumps(body, separators=(",", ":")).encode()).hexdigest()
+    canonical = "\n".join(["POST", host, path, "", body_hash, timestamp, nonce])
+    expected = hmac.new(api_secret.encode(), canonical.encode(), hashlib.sha256).hexdigest()
+
+    return hmac.compare_digest(expected, signature)
+```
+
+</CodeGroup>
+
+<Warning>
+  The exact JSON serialization of the body must match byte-for-byte on both sides for the body hash to match — verify against the **raw request body bytes** your framework received, not a value you've re-serialized after parsing, since key ordering or whitespace differences will produce a different hash.
+</Warning>
+
+See [Webhooks](webhooks) for the full delivery, retry, and setup flow, and [Webhook Payload Examples](webhooks-payload-examples) for the exact payload shape each event carries.

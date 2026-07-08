@@ -1,0 +1,274 @@
+---
+title: "Webhook Payload Examples"
+description: "Full {event, payload} example for every webhook event type Coinut sends."
+---
+
+Every webhook delivery uses the same `{event, payload}` envelope described in [Webhooks](webhooks). Below is a full example payload for each event type listed in the [Event Types](webhooks#event-types) table.
+
+<CodeGroup>
+
+```json CUSTOMER_APPROVED
+{
+  "event": "CUSTOMER_APPROVED",
+  "payload": {
+    "id": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "realName": "Alice Smith",
+    "email": "user@example.com",
+    "externalId": "partner-customer-001",
+    "sumsubLink": "https://in.sumsub.com/websdk/p/sbx_4pe01gDQ0uXG5lVw",
+    "status": "CONFIRMED"
+  }
+}
+```
+
+```json CUSTOMER_REJECTED
+{
+  "event": "CUSTOMER_REJECTED",
+  "payload": {
+    "id": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "realName": "Alice Smith",
+    "email": "user@example.com",
+    "externalId": "partner-customer-001",
+    "sumsubLink": "https://in.sumsub.com/websdk/p/sbx_4pe01gDQ0uXG5lVw",
+    "status": "REJECTED",
+    "remark": "Document image was blurry; resubmission required"
+  }
+}
+```
+
+```json CUSTOMER_DELETED
+{
+  "event": "CUSTOMER_DELETED",
+  "payload": {
+    "id": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "realName": "Alice Smith",
+    "email": "user@example.com",
+    "externalId": "partner-customer-001",
+    "sumsubLink": "https://in.sumsub.com/websdk/p/sbx_4pe01gDQ0uXG5lVw",
+    "status": "DELETED"
+  }
+}
+```
+
+```json VIRTUAL_ACCOUNT_APPROVED
+{
+  "event": "VIRTUAL_ACCOUNT_APPROVED",
+  "payload": {
+    "id": "va_123",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "customerName": "Alice Smith",
+    "currency": "AUD",
+    "accountNumber": "12345678",
+    "bicSwift": "123-456",
+    "payId": "alice@example.com",
+    "createTime": "2026-03-12T17:20:00Z",
+    "status": "VERIFIED",
+    "bankName": "Example Bank"
+  }
+}
+```
+
+```json VIRTUAL_ACCOUNT_REJECTED
+{
+  "event": "VIRTUAL_ACCOUNT_REJECTED",
+  "payload": {
+    "id": "va_124",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "customerName": "Alice Smith",
+    "currency": "EUR",
+    "accountNumber": "GB67BCPY04054100027280",
+    "bicSwift": "BCPYGB22XXX",
+    "createTime": "2026-03-12T17:20:00Z",
+    "status": "PENDING",
+    "bankName": "BCB PAYMENTS LTD"
+  }
+}
+```
+
+<Note>
+  `VirtualAccountDetailDto.status` only has `PENDING` and `VERIFIED` values — there's no dedicated `REJECTED` state on the virtual account record itself. Rely on the `event` name (`VIRTUAL_ACCOUNT_REJECTED`) to distinguish rejection, not the `status` field.
+</Note>
+
+```json DEPOSIT_ADDRESS_APPROVED
+{
+  "event": "DEPOSIT_ADDRESS_APPROVED",
+  "payload": {
+    "id": "7a99eddf-0930-41bc-b967-bea1520d66e4",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "status": "VERIFIED",
+    "address": "0x1234567890123456789012345678901234567890",
+    "network": "ETH",
+    "currency": "USDT"
+  }
+}
+```
+
+```json DEPOSIT_ADDRESS_REJECTED
+{
+  "event": "DEPOSIT_ADDRESS_REJECTED",
+  "payload": {
+    "id": "7a99eddf-0930-41bc-b967-bea1520d66e5",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "status": "REJECTED",
+    "address": "0x1234567890123456789012345678901234567890",
+    "network": "TRX",
+    "currency": "USDT"
+  }
+}
+```
+
+```json DEPOSIT_RECEIVED
+{
+  "event": "DEPOSIT_RECEIVED",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "type": "FIAT",
+    "currency": "AUD",
+    "amount": "1500.00",
+    "receiverVirtualAccount": {
+      "id": "va_123",
+      "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+      "customerName": "Alice Smith",
+      "currency": "AUD",
+      "accountNumber": "12345678",
+      "bicSwift": "123-456",
+      "payId": "alice@example.com",
+      "status": "VERIFIED",
+      "bankName": "Example Bank"
+    },
+    "txid": "tx_external_001",
+    "voutIndexTxKey": "tx_external_001:0",
+    "status": "RECEIVED",
+    "timestamp": "2026-03-12T17:22:04Z"
+  }
+}
+```
+
+```json DEPOSIT_APPROVED
+{
+  "event": "DEPOSIT_APPROVED",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "type": "FIAT",
+    "currency": "AUD",
+    "amount": "1500.00",
+    "receiverVirtualAccount": {
+      "id": "va_123",
+      "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+      "customerName": "Alice Smith",
+      "currency": "AUD",
+      "accountNumber": "12345678",
+      "bicSwift": "123-456",
+      "payId": "alice@example.com",
+      "status": "VERIFIED",
+      "bankName": "Example Bank"
+    },
+    "txid": "tx_external_001",
+    "voutIndexTxKey": "tx_external_001:0",
+    "status": "CONFIRMED",
+    "timestamp": "2026-03-12T17:25:30Z"
+  }
+}
+```
+
+```json DEPOSIT_REJECTED
+{
+  "event": "DEPOSIT_REJECTED",
+  "payload": {
+    "id": "550e8400-e29b-41d4-a716-446655440002",
+    "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+    "type": "CRYPTO",
+    "currency": "USDT",
+    "amount": "500.00",
+    "receiverDepositAddress": {
+      "id": "7a99eddf-0930-41bc-b967-bea1520d66e4",
+      "customerId": "6ac34182-aa2e-4290-ab1b-302a09f451d1",
+      "status": "VERIFIED",
+      "address": "0x1234567890123456789012345678901234567890",
+      "network": "ETH",
+      "currency": "USDT"
+    },
+    "txid": "0xdeadbeef00000000000000000000000000000000000000000000000000000000",
+    "voutIndexTxKey": "0xdeadbeef00000000000000000000000000000000000000000000000000000000:0",
+    "txFrom": "0xsender000000000000000000000000000000000",
+    "status": "REJECTED",
+    "timestamp": "2026-03-12T17:30:00Z"
+  }
+}
+```
+
+```json TRADE_CREATED
+{
+  "event": "TRADE_CREATED",
+  "payload": {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "fromAmount": "1500.00",
+    "fromCurrency": "AUD",
+    "toAmount": "1498.50",
+    "toCurrency": "USDT",
+    "status": "CREATED",
+    "createTime": "2026-03-12T17:23:15Z",
+    "deposit": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "customerName": "Alice Smith"
+    }
+  }
+}
+```
+
+```json TRADE_SETTLED
+{
+  "event": "TRADE_SETTLED",
+  "payload": {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "fromAmount": "1500.00",
+    "fromCurrency": "AUD",
+    "toAmount": "1498.50",
+    "toCurrency": "USDT",
+    "status": "SETTLED",
+    "createTime": "2026-03-12T17:23:15Z",
+    "deposit": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "customerName": "Alice Smith"
+    },
+    "withdrawal": {
+      "txId": "0xabc123..."
+    }
+  }
+}
+```
+
+<Note>
+  `deposit` is only present when the trade's originating deposit used the current deposit flow — for deposits made under the legacy flow, a `legacyDeposit` object (`{id, customerName}`, numeric `id`) is sent instead. `withdrawal.txId` is only present once the outgoing crypto transaction has been broadcast; it may be absent on early deliveries of this event.
+</Note>
+
+```json PAYMENT_SETTLED
+{
+  "event": "PAYMENT_SETTLED",
+  "payload": {
+    "id": "12209d2d-47b4-4a07-8a01-b49052cd8204",
+    "status": "CONFIRMED",
+    "rate": "0.9950",
+    "deductAmount": "180.50",
+    "deductCurrency": "USDT",
+    "receivedCurrency": "USD",
+    "receivedAmount": "100.00",
+    "bankCharge": "80.00",
+    "reference": "payment-123456",
+    "createTime": "2026-03-12 17:22:04",
+    "bankAccount": {
+      "bankName": "DBS Bank",
+      "accountNo": "1234567890",
+      "bankCountry": "SG",
+      "bankAddress": "12 Marina Blvd",
+      "swift": "DBSSSGSG",
+      "beneficiaryName": "Alice Smith",
+      "beneficiaryAddress": "1 Example Street"
+    }
+  }
+}
+```
+
+</CodeGroup>

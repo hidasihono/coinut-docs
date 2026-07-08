@@ -57,6 +57,8 @@
             "group": "Core Concepts",
             "pages": [
               "webhooks",
+              "webhooks-payload-examples",
+              "webhooks-signature-verification",
               "errors"
             ]
           }
